@@ -31,10 +31,22 @@ tingshu/
 │   ├── package.json          # 依赖管理
 │   ├── tsconfig.json         # TypeScript 配置
 │   └── .gitignore           # Git 忽略文件
-├── backend/                   # 后端 API 服务
-│   ├── src/                  # 后端源代码
-│   ├── migrations/           # 数据库迁移
-│   └── Cargo.toml            # Rust 依赖配置
+├── backend/                   # 后端 API 服务 (Go)
+│   ├── cmd/                  # 应用入口点
+│   │   └── main.go          # 主程序入口
+│   ├── tingshu/              # 应用源代码
+│   │   ├── api/             # API 层
+│   │   │   ├── routes.go     # 路由配置
+│   │   │   └── v1/          # v1 版本 API
+│   │   ├── config/          # 配置管理
+│   │   │   └── database.go  # 数据库配置
+│   │   ├── middleware/      # 中间件
+│   │   ├── model/           # 数据模型
+│   │   │   └── models.go    # GORM 模型定义
+│   │   └── service/         # 业务逻辑层
+│   ├── go.mod               # Go 模块依赖
+│   ├── go.sum               # Go 依赖锁定文件
+│   └── .env.example         # 环境变量模板
 ├── CLAUDE.md                 # Claude Code 指南
 └── README.md                 # 项目说明
 ```
@@ -81,6 +93,40 @@ tingshu/
    npm run build:ios
    ```
 
+### Go 后端服务启动
+
+1. **环境准备**
+   - 确保已安装 Go (>= 1.19)
+   - 安装 PostgreSQL 数据库
+   - 安装 Redis (可选)
+
+2. **进入后端目录**
+   ```bash
+   cd backend
+   ```
+
+3. **配置环境变量**
+   ```bash
+   cp .env.example .env
+   # 编辑 .env 文件配置数据库连接等信息
+   ```
+
+4. **安装依赖**
+   ```bash
+   go mod download
+   ```
+
+5. **启动开发服务器**
+   ```bash
+   go run cmd/main.go
+   ```
+
+6. **构建生产版本**
+   ```bash
+   go build -o bin/tingshu cmd/main.go
+   ./bin/tingshu
+   ```
+
 ## 🛠️ 技术栈
 
 ### 移动端 (React Native)
@@ -95,11 +141,13 @@ tingshu/
 - **权限**: React Native Permissions
 - **UI 组件**: React Native Elements
 
-### 后端 (Rust)
-- **框架**: Actix-web
-- **数据库**: PostgreSQL + SQLx
+### 后端 (Go)
+- **框架**: Gin Web Framework
+- **数据库**: PostgreSQL + GORM
+- **缓存**: Redis
 - **认证**: JWT
 - **API**: RESTful API
+- **配置管理**: Viper
 
 ## 📱 功能特性
 
@@ -113,6 +161,12 @@ tingshu/
 - ✅ 平滑动画效果
 - ✅ 阴影和视觉效果
 - ✅ 导航结构
+- ✅ Go 后端 API 服务
+- ✅ PostgreSQL 数据库集成
+- ✅ GORM 数据模型
+- ✅ Redis 缓存支持
+- ✅ JWT 认证中间件
+- ✅ 统一 API 响应格式
 
 ### 计划功能
 - 🔄 音频播放功能
@@ -169,6 +223,30 @@ interface PlayHistory {
 }
 ```
 
+## 🌿 分支管理
+
+### 分支结构
+- `main` - 主分支，用于生产环境
+- `app` - 开发分支，用于移动应用开发
+- `web` - Web 功能分支
+
+### 开发工作流
+1. 从 `app` 分支创建功能分支
+2. 开发完成后合并回 `app` 分支
+3. 定期将 `app` 分支的更新合并到 `main` 分支
+
+### 推送代码
+```bash
+# 确保在正确的分支上
+git checkout app
+
+# 推送当前分支到远程
+git push
+
+# 首次推送新分支
+git push -u origin app
+```
+
 ## 🔧 开发指南
 
 ### 移动端开发
@@ -177,6 +255,13 @@ interface PlayHistory {
 3. 使用 TypeScript 确保类型安全
 4. 遵循 React Native 最佳实践
 5. 使用 AsyncStorage 进行数据持久化
+
+### 后端开发
+1. 在 `backend/tingshu/api/v1/` 中添加新 API 端点
+2. 在 `backend/tingshu/model/` 中定义数据库模型
+3. 在 `backend/tingshu/middleware/` 中添加中间件
+4. 使用 `config.DB` 全局变量访问数据库
+5. 遵循 Go 标准项目结构和最佳实践
 
 ### 组件架构
 - **screens/**: 页面级组件
@@ -211,11 +296,39 @@ interface PlayHistory {
 
 ## 🔐 环境配置
 
-### 环境变量
+### 移动端环境变量
 在 `mobile-app/.env` 中配置：
 
 ```env
 API_BASE_URL=http://localhost:8080
+```
+
+### 后端环境变量
+在 `backend/.env` 中配置：
+
+```env
+# 服务器配置
+SERVER_HOST=localhost
+SERVER_PORT=8080
+
+# 数据库配置
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=your_username
+DB_PASSWORD=your_password
+DB_NAME=tingshu_db
+DB_SSL_MODE=disable
+
+# Redis 配置
+REDIS_ADDR=localhost:6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+# JWT 认证
+JWT_SECRET=your_jwt_secret_key
+
+# AI 功能 (可选)
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
 ## 🚢 部署
