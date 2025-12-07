@@ -1,0 +1,403 @@
+# =====================================
+# EtherAudio 项目 .gitignore 文件
+# =====================================
+
+# ===== 操作系统文件 =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===== IDE 和编辑器 =====
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains IDEs (IntelliJ, WebStorm, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ===== 环境配置 =====
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Go 环境配置
+.env.example
+
+# ===== React Native 移动端项目 =====
+# iOS
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace
+ios/*.xcodeproj
+!ios/EtherAudio.xcodeproj
+!ios/EtherAudio.xcworkspace
+
+# Xcode build output
+build/
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+
+# CocoaPods
+ios/Pods/
+ios/Podfile.lock
+
+# Android
+android/app/build/
+android/.gradle/
+android/local.properties
+android/gradlew
+android/gradlew.bat
+
+# Android build outputs
+apk/
+app/build/
+build/
+*.apk
+*.aab
+!gradle-wrapper.jar
+
+# React Native
+# Metro working directory
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+lerna-debug.log*
+
+# MacOS
+macos/**
+
+# Javascript / TypeScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# ===== Go 后端项目 =====
+# Go build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Go test binaries
+*.test
+
+# Go coverage output
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Go module files
+go.sum
+
+# IDE specific files (already covered above but repeated for clarity)
+.idea/
+*.swp
+*.swo
+*~
+
+# Build directories
+build/
+dist/
+
+# Binary output directory
+backend/bin/
+
+# ===== 数据库 =====
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# PostgreSQL dumps
+*.sql
+*.dump
+
+# Redis dump file
+dump.rdb
+
+# ===== 音频文件 =====
+# 音频文件（如果需要在仓库中管理示例音频）
+# audio-samples/
+# *.mp3
+# *.wav
+# *.m4a
+# *.ogg
+
+# ===== 日志文件 =====
+*.log
+logs/
+
+# ===== 临时文件 =====
+*.tmp
+*.bak
+*.backup
+*.orig
+*.rej
+*.zip
+*.tar.gz
+*.rar
+
+# ===== 证书和密钥 =====
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# API keys and secrets (already covered above but emphasized)
+.secrets
+config/secrets.json
+secrets.json
+
+# ===== 备份文件 =====
+*.backup
+*.bak
+*.old
+
+# ===== 编译产物 =====
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Packages
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# ===== 测试覆盖率 =====
+coverage/
+*.cover
+*.lcov
+
+# ===== 性能分析 =====
+profile.out
+*.prof
+
+# ===== 其他工具 =====
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Kubernetes
+*.kubeconfig
+
+# ===== 特定于项目的文件 =====
+# 项目特定的临时文件
+temp/
+tmp/
+.temp/
+.tmp/
+
+# 缓存目录
+.cache/
+.cache
+
+# ===== 本地开发文件 =====
+# Local development overrides
+local/
+dev/
+development/
+
+# 测试输出
+test-results/
+coverage-results/
+
+# ===== 特定于EtherAudio项目的文件 =====
+# 音频缓存
+audio-cache/
+*.audio-cache
+
+# 用户数据
+user-data/
+user_data/
+
+# 播放历史缓存
+play-history-cache/
+
+# 下载目录
+downloads/
+download/
+
+# ===== 排除整个目录 =====
+# 确保某些敏感或临时目录不会被提交
+node_modules/
+dist/
+build/
+.cache/
+coverage/
+.nyc_output/
+logs/
+temp/
+tmp/
+vendor/
+ios/Pods/
+android/app/build/
+android/.gradle/
+backend/bin/
