@@ -1,0 +1,147 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  StyleSheet,
+  Dimensions,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import {EDITORS_PICKS, getBookCoverUrl, getBookPlayCount} from '../data/mockData';
+
+const {width} = Dimensions.get('window');
+
+const EditorsPick: React.FC = () => {
+  const renderBookItem = ({item}: any) => (
+    <TouchableOpacity style={styles.bookCard} activeOpacity={0.8}>
+      <View style={styles.bookCoverContainer}>
+        <Image
+          source={{uri: getBookCoverUrl(item)}}
+          style={styles.bookCover}
+        />
+        <View style={styles.playButtonOverlay}>
+          <TouchableOpacity style={styles.playButton}>
+            <Icon name="play-arrow" size={16} color="#333" />
+          </TouchableOpacity>
+        </View>
+      </View>
+      <Text style={styles.bookTitle} numberOfLines={1}>
+        {item.title}
+      </Text>
+      <Text style={styles.bookAuthor} numberOfLines={1}>
+        {item.author}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>热门书籍</Text>
+        <TouchableOpacity style={styles.seeAllButton}>
+          <Icon name="arrow-forward" size={20} color="#FF6B35" />
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        horizontal
+        data={EDITORS_PICKS}
+        renderItem={renderBookItem}
+        keyExtractor={item => item.id.toString()}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.listContainer}
+        ItemSeparatorComponent={() => <View style={{width: 20}} />}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  seeAllButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  listContainer: {
+    paddingHorizontal: 16,
+    paddingRight: 32,
+  },
+  bookCard: {
+    width: 150,
+  },
+  bookCoverContainer: {
+    position: 'relative',
+    aspectRatio: 3/4,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  bookCover: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  playButtonOverlay: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    opacity: 0,
+  },
+  playButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  bookTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  bookAuthor: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+});
+
+export default EditorsPick;
