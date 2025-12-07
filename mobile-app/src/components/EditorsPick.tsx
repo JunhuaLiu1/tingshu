@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {EDITORS_PICKS, getBookCoverUrl, getBookPlayCount} from '../data/mockData';
 
 const {width} = Dimensions.get('window');
@@ -23,7 +23,7 @@ const EditorsPick: React.FC = () => {
         />
         <View style={styles.playButtonOverlay}>
           <TouchableOpacity style={styles.playButton}>
-            <Icon name="play-arrow" size={16} color="#333" />
+            <MaterialIcons name="play-arrow" size={16} color="#333" />
           </TouchableOpacity>
         </View>
       </View>
@@ -41,7 +41,7 @@ const EditorsPick: React.FC = () => {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>热门书籍</Text>
         <TouchableOpacity style={styles.seeAllButton}>
-          <Icon name="arrow-forward" size={20} color="#FF6B35" />
+          <MaterialIcons name="arrow-forward" size={20} color="#FF6B35" />
         </TouchableOpacity>
       </View>
 

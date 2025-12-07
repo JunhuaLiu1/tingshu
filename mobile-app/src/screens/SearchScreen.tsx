@@ -9,7 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {Book} from '../types';
 import {searchApi} from '../services/api';
 
@@ -49,7 +49,7 @@ const SearchScreen: React.FC = () => {
           {item.description}
         </Text>
         <View style={styles.resultMeta}>
-          <Icon name="play-circle-filled" size={16} color="#FF6B35" />
+          <MaterialIcons name="play-circle-filled" size={16} color="#FF6B35" />
           <Text style={styles.resultPlayCount}>
             {(item.play_count / 10000).toFixed(1)}万播放
           </Text>
@@ -63,14 +63,14 @@ const SearchScreen: React.FC = () => {
       key={item}
       style={styles.recentSearchItem}
       onPress={() => setSearchQuery(item)}>
-      <Icon name="history" size={16} color="#999" />
+      <MaterialIcons name="history" size={16} color="#999" />
       <Text style={styles.recentSearchText}>{item}</Text>
     </TouchableOpacity>
   );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Icon name="search" size={64} color="#ddd" />
+      <MaterialIcons name="search" size={64} color="#ddd" />
       <Text style={styles.emptyStateTitle}>搜索书籍</Text>
       <Text style={styles.emptyStateSubtitle}>
         输入书名、作者或关键词开始搜索
@@ -86,7 +86,7 @@ const SearchScreen: React.FC = () => {
 
   const renderNoResults = () => (
     <View style={styles.emptyState}>
-      <Icon name="search-off" size={64} color="#ddd" />
+      <MaterialIcons name="search-off" size={64} color="#ddd" />
       <Text style={styles.emptyStateTitle}>未找到相关书籍</Text>
       <Text style={styles.emptyStateSubtitle}>
         试试其他关键词或浏览推荐内容
@@ -99,7 +99,7 @@ const SearchScreen: React.FC = () => {
       {/* 搜索栏 */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <Icon name="search" size={20} color="#999" />
+          <MaterialIcons name="search" size={20} color="#999" />
           <TextInput
             style={styles.searchInput}
             placeholder="搜索书籍、作者..."
@@ -110,7 +110,7 @@ const SearchScreen: React.FC = () => {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Icon name="clear" size={20} color="#999" />
+              <MaterialIcons name="clear" size={20} color="#999" />
             </TouchableOpacity>
           )}
         </View>

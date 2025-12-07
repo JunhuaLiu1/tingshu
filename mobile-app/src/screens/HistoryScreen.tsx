@@ -8,7 +8,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {Book} from '../types';
 import {ALL_BOOKS, getBookCoverUrl, getBookPlayCount} from '../data/mockData';
 
@@ -117,14 +117,14 @@ const HistoryScreen: React.FC = () => {
       </View>
 
       <TouchableOpacity style={styles.moreButton}>
-        <Icon name="more-vert" size={20} color="#999" />
+        <MaterialIcons name="more-vert" size={20} color="#999" />
       </TouchableOpacity>
     </TouchableOpacity>
   );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Icon name="history" size={64} color="#ddd" />
+      <MaterialIcons name="history" size={64} color="#ddd" />
       <Text style={styles.emptyStateTitle}>暂无播放历史</Text>
       <Text style={styles.emptyStateSubtitle}>
         开始听书后，播放记录将显示在这里

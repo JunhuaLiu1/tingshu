@@ -9,7 +9,7 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {HERO_BOOKS, getBookCoverUrl} from '../data/mockData';
 
 const {width} = Dimensions.get('window');
@@ -74,17 +74,17 @@ const HeroCarousel: React.FC = () => {
           <View style={styles.bottomSection}>
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
-                <Icon name="headphones" size={14} color="#666" />
+                <MaterialIcons name="headphones" size={14} color="#666" />
                 <Text style={styles.statText}>1.2k</Text>
               </View>
               <View style={styles.statItem}>
-                <Icon name="schedule" size={14} color="#666" />
+                <MaterialIcons name="schedule" size={14} color="#666" />
                 <Text style={styles.statText}>45m left</Text>
               </View>
             </View>
 
             <TouchableOpacity style={styles.playButton}>
-              <Icon name="play-arrow" size={18} color="white" />
+              <MaterialIcons name="play-arrow" size={18} color="white" />
             </TouchableOpacity>
           </View>
         </View>

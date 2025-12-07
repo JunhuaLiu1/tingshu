@@ -7,7 +7,7 @@ import {
   Image,
   StyleSheet,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {RANKING_BOOKS, getBookCoverUrl, getBookPlayCount} from '../data/mockData';
 
 const Rankings: React.FC = () => {
@@ -32,7 +32,7 @@ const Rankings: React.FC = () => {
       <View style={styles.rankContainer}>
         <Text style={styles.rankNumber}>#{item.rank}</Text>
         <TouchableOpacity style={styles.moreButton}>
-          <Icon name="more-horiz" size={20} color="#ccc" />
+          <MaterialIcons name="more-horiz" size={20} color="#ccc" />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

@@ -2,7 +2,7 @@ import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 
 // 导入页面组件
 import HomeScreen from './screens/HomeScreen';
@@ -42,7 +42,7 @@ const App: React.FC = () => {
                   iconName = 'help';
               }
 
-              return <Icon name={iconName} size={size} color={color} />;
+              return <MaterialIcons name={iconName} size={size} color={color} />;
             },
             tabBarActiveTintColor: '#FF6B35',
             tabBarInactiveTintColor: 'gray',

@@ -9,7 +9,7 @@ import {
   Switch,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {User} from '../types';
 
 const ProfileScreen: React.FC = () => {
@@ -86,12 +86,12 @@ const ProfileScreen: React.FC = () => {
     onPress?: () => void
   ) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-      <Icon name={icon} size={24} color="#666" />
+      <MaterialIcons name={icon} size={24} color="#666" />
       <View style={styles.menuContent}>
         <Text style={styles.menuTitle}>{title}</Text>
         {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
       </View>
-      <Icon name="chevron-right" size={24} color="#999" />
+      <MaterialIcons name="chevron-right" size={24} color="#999" />
     </TouchableOpacity>
   );
 
@@ -102,7 +102,7 @@ const ProfileScreen: React.FC = () => {
     onValueChange: (value: boolean) => void
   ) => (
     <View style={styles.menuItem}>
-      <Icon name={icon} size={24} color="#666" />
+      <MaterialIcons name={icon} size={24} color="#666" />
       <Text style={styles.menuTitle}>{title}</Text>
       <Switch
         value={value}

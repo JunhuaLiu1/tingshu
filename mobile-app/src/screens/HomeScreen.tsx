@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {Book, Category} from '../types';
 import {CATEGORIES, HERO_BOOKS, EDITORS_PICKS, RANKING_BOOKS} from '../data/mockData';
 import HeroCarousel from '../components/HeroCarousel';
@@ -27,7 +27,7 @@ const HomeScreen: React.FC = () => {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* 搜索栏 */}
       <View style={styles.searchBar}>
-        <Icon name="search" size={20} color="#999" />
+        <MaterialIcons name="search" size={20} color="#999" />
         <Text style={styles.searchPlaceholder}>搜索书籍、作者...</Text>
       </View>
 

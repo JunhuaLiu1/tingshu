@@ -9,8 +9,10 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import {MaterialIcons} from '@expo/vector-icons';
+// import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+// 注意：在Expo Go中不支持原生音频模块
+// 如果需要音频录制功能，请使用EAS构建或expo-av库
 
 const {width, height} = Dimensions.get('window');
 
@@ -22,7 +24,8 @@ interface Episode {
 }
 
 const PlayerScreen: React.FC = () => {
-  const audioRecorderPlayer = useRef(new AudioRecorderPlayer()).current;
+  // const audioRecorderPlayer = useRef(new AudioRecorderPlayer()).current;
+// 注意：在Expo Go中不支持原生音频模块
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -125,11 +128,11 @@ const PlayerScreen: React.FC = () => {
         {/* 控制按钮 */}
         <View style={styles.controls}>
           <TouchableOpacity style={styles.controlButton}>
-            <Icon name="skip-previous" size={32} color="#333" />
+            <MaterialIcons name="skip-previous" size={32} color="#333" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.playButton} onPress={togglePlayPause}>
-            <Icon
+            <MaterialIcons
               name={isPlaying ? 'pause' : 'play-arrow'}
               size={40}
               color="white"
@@ -137,14 +140,14 @@ const PlayerScreen: React.FC = () => {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.controlButton}>
-            <Icon name="skip-next" size={32} color="#333" />
+            <MaterialIcons name="skip-next" size={32} color="#333" />
           </TouchableOpacity>
         </View>
 
         {/* 额外控制 */}
         <View style={styles.extraControls}>
           <TouchableOpacity style={styles.extraControlButton}>
-            <Icon name="favorite-border" size={24} color="#999" />
+            <MaterialIcons name="favorite-border" size={24} color="#999" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -154,11 +157,11 @@ const PlayerScreen: React.FC = () => {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.extraControlButton}>
-            <Icon name="share" size={24} color="#999" />
+            <MaterialIcons name="share" size={24} color="#999" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.extraControlButton}>
-            <Icon name="more-horiz" size={24} color="#999" />
+            <MaterialIcons name="more-horiz" size={24} color="#999" />
           </TouchableOpacity>
         </View>
       </View>
@@ -204,7 +207,7 @@ const PlayerScreen: React.FC = () => {
               </View>
             </View>
             <TouchableOpacity style={styles.downloadButton}>
-              <Icon
+              <MaterialIcons
                 name="file-download"
                 size={20}
                 color={

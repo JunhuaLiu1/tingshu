@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {CATEGORIES} from '../data/mockData';
 
 // 为每个分类分配图标
@@ -33,7 +33,7 @@ const CategoryTabs: React.FC = () => {
         onPress={() => setActiveId(category.id)}
         activeOpacity={0.8}>
         <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
-          <Icon
+          <MaterialIcons
             name={iconName}
             size={20}
             color={isActive ? '#FF6B35' : '#999'}
