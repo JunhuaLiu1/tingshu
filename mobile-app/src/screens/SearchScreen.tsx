@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {Book} from '../types';
@@ -95,9 +96,10 @@ const SearchScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
-      {/* 搜索栏 */}
-      <View style={styles.searchContainer}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* 搜索栏 */}
+        <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <MaterialIcons name="search" size={20} color="#999" />
           <TextInput
@@ -138,11 +140,16 @@ const SearchScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F6F8',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F6F8',

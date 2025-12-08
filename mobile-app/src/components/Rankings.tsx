@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
   Image,
   StyleSheet,
 } from 'react-native';
@@ -47,14 +46,14 @@ const Rankings: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={RANKING_BOOKS.slice(0, 4)}
-        renderItem={renderRankingItem}
-        keyExtractor={item => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContainer}
-        ItemSeparatorComponent={() => <View style={{height: 12}} />}
-      />
+      <View style={styles.listContainer}>
+        {RANKING_BOOKS.slice(0, 4).map((item, index) => (
+          <View key={item.id.toString()}>
+            {renderRankingItem({item, index})}
+            {index < 3 && <View style={{height: 12}} />}
+          </View>
+        ))}
+      </View>
     </View>
   );
 };

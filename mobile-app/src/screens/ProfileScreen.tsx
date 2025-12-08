@@ -8,6 +8,7 @@ import {
   Image,
   Switch,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {User} from '../types';
@@ -121,6 +122,7 @@ const ProfileScreen: React.FC = () => {
   );
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* 用户信息头部 */}
       {renderProfileHeader()}
@@ -170,10 +172,15 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.logoutText}>退出登录</Text>
       </TouchableOpacity>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F6F8',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F6F8',

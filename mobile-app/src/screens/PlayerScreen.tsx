@@ -5,10 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  Slider,
   ScrollView,
   Dimensions,
+  SafeAreaView,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import {MaterialIcons} from '@expo/vector-icons';
 // import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 // 注意：在Expo Go中不支持原生音频模块
@@ -92,7 +93,8 @@ const PlayerScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
       {/* 封面区域 */}
       <View style={styles.coverContainer}>
         <Image
@@ -218,11 +220,16 @@ const PlayerScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F6F8',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F6F8',

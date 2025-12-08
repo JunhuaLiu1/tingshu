@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {Book} from '../types';
@@ -133,6 +134,7 @@ const HistoryScreen: React.FC = () => {
   );
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <View style={styles.container}>
       {/* 头部 */}
       <View style={styles.header}>
@@ -157,10 +159,15 @@ const HistoryScreen: React.FC = () => {
         />
       )}
     </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F6F8',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F6F8',

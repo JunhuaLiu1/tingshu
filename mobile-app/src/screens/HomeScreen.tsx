@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {Book, Category} from '../types';
@@ -24,10 +25,11 @@ const HomeScreen: React.FC = () => {
   }, []);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* 搜索栏 */}
-      <View style={styles.searchBar}>
-        <MaterialIcons name="search" size={20} color="#999" />
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* 搜索栏 */}
+        <View style={styles.searchBar}>
+          <MaterialIcons name="search" size={20} color="#999" />
         <Text style={styles.searchPlaceholder}>搜索书籍、作者...</Text>
       </View>
 
@@ -42,11 +44,16 @@ const HomeScreen: React.FC = () => {
 
       {/* 排行榜 */}
       <Rankings />
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F6F8',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F6F8',
