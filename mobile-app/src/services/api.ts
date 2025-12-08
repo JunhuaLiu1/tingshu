@@ -1,9 +1,10 @@
 import axios, {AxiosResponse} from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ApiResponse, PaginatedResponse, Book, Category, Ranking, PlayHistory, SearchResult} from '../types';
 
 // 创建 axios 实例
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,9 +13,9 @@ const apiClient = axios.create({
 
 // 请求拦截器
 apiClient.interceptors.request.use(
-  config => {
+  async config => {
     // 添加认证 token（如果有）
-    const token = localStorage.getItem('auth_token');
+    const token = await AsyncStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,12 +31,11 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
     return response;
   },
-  error => {
+  async error => {
     // 处理认证错误
     if (error.response?.status === 401) {
-      // 清除 token 并跳转到登录页
-      localStorage.removeItem('auth_token');
-      // navigation.navigate('Login');
+      // 清除 token
+      await AsyncStorage.removeItem('auth_token');
     }
     return Promise.reject(error);
   }

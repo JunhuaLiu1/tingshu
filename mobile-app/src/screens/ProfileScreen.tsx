@@ -5,16 +5,19 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
   Switch,
   Alert,
   SafeAreaView,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {User} from '../types';
+import { tokens } from '../theme/tokens';
+import { layoutStyles } from '../theme/styles';
+import CachedImage from '../components/common/CachedImage';
+import { useToast } from '../contexts/ToastContext';
 
 const ProfileScreen: React.FC = () => {
-  // 模拟用户数据
+  const { showToast } = useToast();
   const [user] = useState<User>({
     id: 1,
     username: 'booklover',
@@ -35,11 +38,30 @@ const ProfileScreen: React.FC = () => {
       '确定要退出当前账号吗？',
       [
         {text: '取消', style: 'cancel'},
-        {text: '退出', style: 'destructive', onPress: () => {
-          console.log('User logged out');
-        }},
+        {
+          text: '退出', 
+          style: 'destructive', 
+          onPress: () => {
+            showToast({ type: 'success', message: '已退出登录' });
+            console.log('User logged out');
+          }
+        },
       ]
     );
+  };
+
+  const handleClearCache = () => {
+    Alert.alert('清除缓存', '确定要清除所有缓存吗？', [
+      {text: '取消', style: 'cancel'},
+      {
+        text: '清除', 
+        style: 'destructive', 
+        onPress: () => {
+          showToast({ type: 'success', message: '缓存已清除' });
+          console.log('Cache cleared');
+        }
+      },
+    ]);
   };
 
   const formatDate = (dateString: string): string => {
@@ -53,7 +75,7 @@ const ProfileScreen: React.FC = () => {
 
   const renderProfileHeader = () => (
     <View style={styles.profileHeader}>
-      <Image
+      <CachedImage
         source={{uri: user.avatar || 'https://picsum.photos/200/200?random=avatar'}}
         style={styles.avatar}
       />
@@ -86,13 +108,17 @@ const ProfileScreen: React.FC = () => {
     subtitle?: string,
     onPress?: () => void
   ) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-      <MaterialIcons name={icon} size={24} color="#666" />
+    <TouchableOpacity 
+      style={styles.menuItem} 
+      onPress={onPress}
+      activeOpacity={tokens.opacity.active}
+    >
+      <MaterialIcons name={icon} size={24} color={tokens.colors.text.secondary} />
       <View style={styles.menuContent}>
         <Text style={styles.menuTitle}>{title}</Text>
         {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
       </View>
-      <MaterialIcons name="chevron-right" size={24} color="#999" />
+      <MaterialIcons name="chevron-right" size={24} color={tokens.colors.text.tertiary} />
     </TouchableOpacity>
   );
 
@@ -103,13 +129,13 @@ const ProfileScreen: React.FC = () => {
     onValueChange: (value: boolean) => void
   ) => (
     <View style={styles.menuItem}>
-      <MaterialIcons name={icon} size={24} color="#666" />
+      <MaterialIcons name={icon} size={24} color={tokens.colors.text.secondary} />
       <Text style={styles.menuTitle}>{title}</Text>
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{false: '#E0E0E0', true: '#FF6B35'}}
-        thumbColor={value ? '#FFFFFF' : '#FFFFFF'}
+        trackColor={{false: tokens.colors.border.default, true: tokens.colors.primary}}
+        thumbColor={tokens.colors.surface}
       />
     </View>
   );
@@ -122,164 +148,157 @@ const ProfileScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* 用户信息头部 */}
-      {renderProfileHeader()}
+    <SafeAreaView style={layoutStyles.safeArea}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* 用户信息头部 */}
+        {renderProfileHeader()}
 
-      {/* 统计信息 */}
-      {renderStatsSection()}
+        {/* 统计信息 */}
+        {renderStatsSection()}
 
-      {/* 个人信息设置 */}
-      {renderSection('个人设置', (
-        <>
-          {renderMenuItem('person', '编辑资料', user.username)}
-          {renderMenuItem('account-circle', '账号管理', '设置登录密码')}
-          {renderMenuItem('notifications', '消息通知', '你有3条新消息')}
-        </>
-      ))}
+        {/* 个人信息设置 */}
+        {renderSection('个人设置', (
+          <>
+            {renderMenuItem('person', '编辑资料', user.username)}
+            {renderMenuItem('account-circle', '账号管理', '设置登录密码')}
+            {renderMenuItem('notifications', '消息通知', '你有3条新消息')}
+          </>
+        ))}
 
-      {/* 播放设置 */}
-      {renderSection('播放设置', (
-        <>
-          {renderSettingsItem('play-arrow', '自动播放下一集', autoPlay, setAutoPlay)}
-          {renderSettingsItem('wifi', '仅WiFi下下载', downloadOnlyWifi, setDownloadOnlyWifi)}
-          {renderSettingsItem('notifications', '推送通知', notifications, setNotifications)}
-        </>
-      ))}
+        {/* 播放设置 */}
+        {renderSection('播放设置', (
+          <>
+            {renderSettingsItem('play-arrow', '自动播放下一集', autoPlay, setAutoPlay)}
+            {renderSettingsItem('wifi', '仅WiFi下下载', downloadOnlyWifi, setDownloadOnlyWifi)}
+            {renderSettingsItem('notifications', '推送通知', notifications, setNotifications)}
+          </>
+        ))}
 
-      {/* 其他功能 */}
-      {renderSection('其他', (
-        <>
-          {renderMenuItem('favorite', '我的收藏', '42本书籍')}
-          {renderMenuItem('download', '下载管理', '15个文件')}
-          {renderMenuItem('history', '清除缓存', '缓存大小: 128MB', () => {
-            Alert.alert('清除缓存', '确定要清除所有缓存吗？', [
-              {text: '取消', style: 'cancel'},
-              {text: '清除', style: 'destructive', onPress: () => {
-                console.log('Cache cleared');
-              }},
-            ]);
-          })}
-          {renderMenuItem('feedback', '意见反馈')}
-          {renderMenuItem('info', '关于我们', '版本 1.0.0')}
-          {renderMenuItem('help', '帮助与支持')}
-        </>
-      ))}
+        {/* 其他功能 */}
+        {renderSection('其他', (
+          <>
+            {renderMenuItem('favorite', '我的收藏', '42本书籍')}
+            {renderMenuItem('download', '下载管理', '15个文件')}
+            {renderMenuItem('history', '清除缓存', '缓存大小: 128MB', handleClearCache)}
+            {renderMenuItem('feedback', '意见反馈')}
+            {renderMenuItem('info', '关于我们', '版本 1.0.0')}
+            {renderMenuItem('help', '帮助与支持')}
+          </>
+        ))}
 
-      {/* 退出登录按钮 */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>退出登录</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* 退出登录按钮 */}
+        <TouchableOpacity 
+          style={styles.logoutButton} 
+          onPress={handleLogout}
+          activeOpacity={tokens.opacity.active}
+        >
+          <Text style={styles.logoutText}>退出登录</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F6F8',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F5F6F8',
+    backgroundColor: tokens.colors.background,
   },
   profileHeader: {
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 24,
-    paddingTop: 40,
+    backgroundColor: tokens.colors.surface,
+    padding: tokens.spacing.lg,
+    paddingTop: tokens.spacing.xxl,
   },
   avatar: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    marginBottom: 12,
+    borderRadius: tokens.radius.full,
+    marginBottom: tokens.spacing.md,
   },
   username: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: tokens.typography.h2,
+    fontWeight: tokens.fontWeight.bold,
+    color: tokens.colors.text.primary,
     marginBottom: 4,
   },
   email: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: tokens.typography.caption,
+    color: tokens.colors.text.secondary,
     marginBottom: 4,
   },
   joinDate: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: tokens.typography.small,
+    color: tokens.colors.text.tertiary,
   },
   statsSection: {
     flexDirection: 'row',
-    backgroundColor: 'white',
-    marginTop: 16,
-    paddingVertical: 20,
+    backgroundColor: tokens.colors.surface,
+    marginTop: tokens.spacing.md,
+    paddingVertical: tokens.spacing.lg,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FF6B35',
+    fontSize: tokens.typography.h1,
+    fontWeight: tokens.fontWeight.bold,
+    color: tokens.colors.primary,
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: tokens.typography.small,
+    color: tokens.colors.text.secondary,
     textAlign: 'center',
   },
   section: {
-    marginTop: 24,
-    backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginTop: tokens.spacing.lg,
+    backgroundColor: tokens.colors.surface,
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-    marginTop: 16,
+    fontSize: tokens.typography.body,
+    fontWeight: tokens.fontWeight.semibold,
+    color: tokens.colors.text.primary,
+    marginBottom: tokens.spacing.sm,
+    marginTop: tokens.spacing.md,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: tokens.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: tokens.colors.border.light,
   },
   menuContent: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: tokens.spacing.md,
   },
   menuTitle: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: tokens.typography.body,
+    color: tokens.colors.text.primary,
   },
   menuSubtitle: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: tokens.typography.small,
+    color: tokens.colors.text.tertiary,
     marginTop: 2,
   },
   logoutButton: {
-    margin: 24,
-    marginVertical: 40,
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 8,
+    margin: tokens.spacing.lg,
+    marginVertical: tokens.spacing.xxl,
+    backgroundColor: tokens.colors.surface,
+    padding: tokens.spacing.md,
+    borderRadius: tokens.radius.sm,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FF6B35',
+    borderColor: tokens.colors.primary,
   },
   logoutText: {
-    fontSize: 16,
-    color: '#FF6B35',
-    fontWeight: '600',
+    fontSize: tokens.typography.body,
+    color: tokens.colors.primary,
+    fontWeight: tokens.fontWeight.semibold,
   },
 });
 

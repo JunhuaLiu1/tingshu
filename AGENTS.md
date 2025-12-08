@@ -37,8 +37,10 @@ go test -run TestFunctionName    # 运行单个测试
 ```bash
 cd backend
 cp .env.example .env             # 复制环境变量模板
-# 编辑 .env 配置数据库连接信息
-go run cmd/main.go               # 启动时自动执行 GORM 迁移
+# 编辑 .env 配置 Supabase 连接信息:
+#   SUPABASE_URL=https://xxx.supabase.co
+#   SUPABASE_DB_PASSWORD=your_password
+go run cmd/main.go               # 启动时自动连接 Supabase
 ```
 
 **依赖管理:**
@@ -86,22 +88,28 @@ npm run reset-project            # 重置项目配置
 1. HTTP 请求 → Gin 路由 (`backend/tingshu/api/routes.go`)
 2. 中间件链 → CORS、Logger、Recovery、Auth (`backend/tingshu/middleware/`)
 3. API 处理器 → 版本化 API 端点 (`backend/tingshu/api/v1/`)
-4. 数据层 → GORM 模型 (`backend/tingshu/model/models.go`)
-5. 数据库 → PostgreSQL (通过 `config.DB` 全局变量访问)
+4. 数据层 → 原生 SQL 查询 (通过 `config.SupabaseDB` 全局变量访问)
+5. 数据库 → Supabase PostgreSQL (使用 `database/sql` + `lib/pq`)
 
 **关键设计模式:**
 - 所有 API 响应使用统一格式: `{code: number, message: string, data: T}`
-- 使用 `v1.Response()`, `v1.Success()`, `v1.Error()` 辅助函数构建响应 (`backend/tingshu/api/response.go`)
-- 数据库模型使用 GORM 自动迁移 (启动时执行)
-- 服务层 (`backend/tingshu/service/`) 目前为空,业务逻辑在 API 处理器中
-- 所有 GORM 模型使用软删除 (`DeletedAt` 字段)
+- 使用 `v1.Success()`, `v1.Error()` 辅助函数构建响应 (`backend/tingshu/api/v1/response.go`)
+- **数据库访问**: 使用原生 SQL (不使用 GORM ORM)
+  - 所有查询通过 `config.SupabaseDB` (`*sql.DB`) 执行
+  - 使用 `database/sql` 标准库 + `lib/pq` PostgreSQL 驱动
+  - GORM 模型定义存在于 `backend/tingshu/model/models.go` 但**未实际使用**
+- **无服务层**: 业务逻辑直接在 API 处理器中 (v1包),无独立 service 层
+- **类型定义重复**: API 层在每个 handler 文件中自定义结构体 (如 `Book`, `Category`),与 GORM 模型分离
 
 **环境变量配置:**
 - `SERVER_HOST`, `SERVER_PORT` - 服务器配置
-- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL_MODE` - PostgreSQL 配置
-- `REDIS_ADDR`, `REDIS_PASSWORD`, `REDIS_DB` - Redis 配置
-- `JWT_SECRET` - JWT 认证密钥
-- `GEMINI_API_KEY` - AI 功能预留
+- **Supabase 配置** (必需):
+  - `SUPABASE_URL` - Supabase 项目 URL (格式: `https://xxxxx.supabase.co`)
+  - `SUPABASE_ANON_KEY` - 匿名访问密钥
+  - `SUPABASE_SERVICE_KEY` - 服务端密钥
+  - `SUPABASE_DB_PASSWORD` - PostgreSQL 数据库密码
+- `REDIS_ADDR`, `REDIS_PASSWORD`, `REDIS_DB` - Redis 配置 (已定义但未使用)
+- `JWT_SECRET` - JWT 认证密钥 (中间件存根未实现)
 
 **数据模型关系:**
 - `User` (用户) ← `PlayHistory` (播放历史)
@@ -166,28 +174,71 @@ App.tsx (根导航)
 
 ### 添加后端 API 端点
 
-1. 在 `backend/tingshu/model/models.go` 定义或更新 GORM 模型
-   - 所有模型必须包含 `CreatedAt`, `UpdatedAt`, `DeletedAt` (软删除)
-   - 使用 GORM 标签定义字段约束: `gorm:"not null"`, `gorm:"uniqueIndex"` 等
-   - JSON 序列化使用 snake_case: `json:"cover_url"`
-2. 在 `backend/tingshu/api/v1/` 创建或编辑对应的处理器文件 (如 `books.go`)
+**重要前提**: 当前项目使用原生 SQL,**不使用** GORM ORM。
+
+1. **定义数据结构**
+   - 在对应的 API handler 文件 (如 `backend/tingshu/api/v1/books.go`) 中定义响应结构体
+   - 使用 JSON 标签定义字段序列化格式 (snake_case): `json:"cover_url"`
+   - 示例:
+     ```go
+     type Book struct {
+         ID       int    `json:"id"`
+         Title    string `json:"title"`
+         CoverURL string `json:"cover_url"`
+     }
+     ```
+
+2. **实现 API 处理器** (`backend/tingshu/api/v1/`)
+   - 使用 `config.SupabaseDB.Query()` 或 `config.SupabaseDB.QueryRow()` 执行原生 SQL
+   - 使用 `rows.Scan()` 映射查询结果到结构体
    - 使用 `v1.Success(c, data)` 返回成功响应
    - 使用 `v1.Error(c, code, message)` 返回错误响应
-3. 在 `backend/tingshu/api/routes.go` 注册路由
+   - 示例:
+     ```go
+     func GetBooks(c *gin.Context) {
+         rows, err := config.SupabaseDB.Query(`
+             SELECT id, title, cover_url FROM books
+             LIMIT 20
+         `)
+         if err != nil {
+             Error(c, http.StatusInternalServerError, "Failed to fetch books")
+             return
+         }
+         defer rows.Close()
+         
+         var books []Book
+         for rows.Next() {
+             var book Book
+             rows.Scan(&book.ID, &book.Title, &book.CoverURL)
+             books = append(books, book)
+         }
+         Success(c, books)
+     }
+     ```
+
+3. **注册路由** (`backend/tingshu/api/routes.go`)
    - 公开路由直接注册到 `v1Group`
-   - 需要认证的路由注册到 `authGroup` (使用 `middleware.Auth()`)
-4. 使用 `config.DB` 访问数据库
-5. 响应格式自动遵循 `{code: number, message: string, data: T}`
+   - 需要认证的路由注册到 `authGroup` (使用 `middleware.Auth()`,但当前为存根)
+   - 示例: `v1Group.GET("/books", v1.GetBooks)`
+
+4. **数据库访问规范**
+   - 使用 `config.SupabaseDB` 全局变量访问数据库
+   - 所有 SQL 使用参数化查询防止注入: `Query("SELECT * FROM books WHERE id = $1", id)`
+   - PostgreSQL 占位符使用 `$1`, `$2`, `$3` 格式
+   - 必须调用 `defer rows.Close()` 释放资源
+
+5. **响应格式规范**
+   - 成功响应: `{code: 200, message: "success", data: {...}}`
+   - 错误响应: `{code: 4xx/5xx, message: "error message"}`
 
 **后端 API 路由映射:**
-- `GET /api/v1/books` - 获取书籍列表 (支持分页)
+- `GET /api/v1/books` - 获取书籍列表 (支持分页: `?page=1&limit=20`)
 - `GET /api/v1/books/:id` - 获取书籍详情
-- `GET /api/v1/books/:id/episodes` - 获取书籍章节
+- `GET /api/v1/books/:id/episodes` - 获取书籍章节列表
 - `GET /api/v1/categories` - 获取所有分类
-- `GET /api/v1/rankings` - 获取默认排行榜
-- `GET /api/v1/rankings/:period` - 获取指定周期排行榜 (daily/weekly/monthly)
-- `GET /api/v1/search?q=keyword` - 搜索书籍
-- 认证路由组 (`/api/v1/users/*`) 需要 JWT token
+- `GET /api/v1/rankings?period=daily` - 获取排行榜 (period: daily/weekly/monthly)
+- `GET /api/v1/search?q=keyword` - 搜索书籍 (ILIKE 模糊匹配 title/author/description)
+- `GET /health` - 健康检查端点
 
 ### 添加移动端界面
 
@@ -219,13 +270,22 @@ App.tsx (根导航)
 ## 已知限制和技术债务
 
 ### 后端
-- **JWT 认证未实现**: `middleware.Auth()` 当前为存根,总是调用 `c.Next()` (见 `backend/tingshu/middleware/middleware.go:62-73`)
-- **中间件安全问题**: Logger 和 Recovery 中间件错误地使用了 `config.AppConfig.JWTSecret` (需要修复)
-- **服务层为空**: 业务逻辑当前直接在 API 处理器中,未使用依赖注入
+- **数据库架构矛盾** ⚠️ **最严重问题**:
+  - GORM 模型已定义 (`backend/tingshu/model/models.go`) 但完全未使用
+  - 所有 API 使用原生 SQL (`database/sql` + `lib/pq`)
+  - API 层自定义结构体与 GORM 模型重复定义 (如 `v1.Book` vs `model.Book`)
+  - 后果: 维护两套数据模型,类型不一致,无法使用 GORM 特性 (关联查询、迁移、软删除)
+- **JWT 认证未实现**: `middleware.Auth()` 当前为存根,仅检查 token 存在性,不验证有效性 (见 `backend/tingshu/middleware/middleware.go:47-58`)
+- **无服务层**: 业务逻辑直接写在 API 处理器中,无独立 service 层,违反单一职责原则
 - **无测试覆盖**: 缺少单元测试和集成测试
-- **数据库迁移**: 仅使用 GORM 自动迁移,无种子数据脚本或版本化迁移
-- **Redis 未使用**: 已初始化 Redis 连接但未在任何缓存逻辑中使用
-- **分页未标准化**: API 响应中缺少统一的分页结构
+- **数据库 Schema 管理混乱**: 
+  - 无数据库迁移脚本 (不使用 GORM AutoMigrate)
+  - 无种子数据脚本
+  - Schema 变更依赖手动 SQL 或 Supabase Dashboard
+- **Redis 已配置但未使用**: 环境变量已加载但无缓存逻辑实现
+- **分页未标准化**: `GetBooks` 返回 `{data, total, page, page_size}`,其他接口无分页
+- **错误处理简陋**: SQL 错误直接返回 500,无详细日志,`rows.Scan` 错误被 `continue` 静默跳过
+- **SQL 注入风险**: 虽然使用参数化查询,但 `SearchBooks` 中的 `ILIKE` 模式需要额外验证
 
 ### 移动应用
 - **播放器未完成**: PlayerScreen 界面已实现但音频播放逻辑未完全集成
@@ -240,10 +300,15 @@ App.tsx (根导航)
 ## 开发工作流
 
 **独立启动后端:**
-1. 配置 PostgreSQL 数据库
-2. 配置 Redis (可选)
-3. `cd backend && go run cmd/main.go`
-4. 后端运行在 http://localhost:8080
+1. 配置 Supabase 项目
+   - 在 [Supabase Dashboard](https://app.supabase.com) 创建项目
+   - 从 Settings > API 获取 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`
+   - 从 Settings > Database 获取数据库密码 (`SUPABASE_DB_PASSWORD`)
+2. 配置 Redis (可选,当前未使用)
+3. 配置 `.env` 文件
+4. `cd backend && go run cmd/main.go`
+5. 后端运行在 http://localhost:8080
+6. 访问 http://localhost:8080/health 验证服务状态
 
 **独立启动移动应用:**
 1. 确保后端运行以获得完整功能
@@ -253,13 +318,22 @@ App.tsx (根导航)
 
 ## 添加新功能时的注意事项
 
-1. **前端数据格式兼容**: Book 类型支持 `cover_url` 和 `coverUrl` 双格式,维护模拟数据兼容性以支持离线开发
-2. **后端中间件**: 使用已建立的中间件链 (CORS、Logger、Recovery),新路由注册到正确的路由组 (公开 vs 认证)
-3. **移动端数据处理**: 处理后端 snake_case 和前端 camelCase 两种格式,必要时在 API 层转换
-4. **API 响应规范**: 严格遵循 `{code, message, data}` 响应格式,使用 `v1.Success()` 和 `v1.Error()` 辅助函数
-5. **TypeScript 类型完整性**: 所有新组件、API 函数必须包含完整类型定义,避免 `any` 类型
-6. **Go 包导入路径**: 使用 `github.com/username/tingshu-backend/tingshu/...` 导入本地包
-7. **环境变量管理**: 同时更新 `backend/.env.example` 和实际 `.env` 文件
-8. **GORM 模型约定**: 必须包含 `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt` 字段
-9. **移动端导入**: 使用相对路径 `../` 而不是别名 `@/` 或 `~/`
-10. **Expo 限制**: 注意 Expo 在离线模式下的限制,某些原生模块可能需要特殊配置
+1. **后端数据库访问规范** ⚠️ **关键**:
+   - 当前项目**不使用 GORM ORM**,使用原生 SQL
+   - 通过 `config.SupabaseDB` (`*sql.DB`) 执行查询
+   - 在 API handler 文件中定义结构体,不依赖 `model/models.go` 中的 GORM 模型
+   - 使用 PostgreSQL 占位符语法 `$1`, `$2` 而非 `?`
+   - 必须使用参数化查询防止 SQL 注入
+2. **Supabase 连接字符串格式**:
+   - 格式: `postgresql://postgres:{password}@db.{project-ref}.supabase.co:5432/postgres?sslmode=require`
+   - 项目引用从 `SUPABASE_URL` 自动提取 (见 `config/supabase.go:extractProjectRef()`)
+3. **前端数据格式兼容**: Book 类型支持 `cover_url` 和 `coverUrl` 双格式,维护模拟数据兼容性以支持离线开发
+4. **后端中间件**: 使用已建立的中间件链 (CORS、Logger、Recovery),新路由注册到正确的路由组 (公开 vs 认证)
+5. **移动端数据处理**: 处理后端 snake_case 和前端 camelCase 两种格式,必要时在 API 层转换
+6. **API 响应规范**: 严格遵循 `{code, message, data}` 响应格式,使用 `v1.Success()` 和 `v1.Error()` 辅助函数
+7. **TypeScript 类型完整性**: 所有新组件、API 函数必须包含完整类型定义,避免 `any` 类型
+8. **Go 包导入路径**: 使用 `github.com/username/tingshu-backend/tingshu/...` 导入本地包
+9. **环境变量管理**: 同时更新 `backend/.env.example` 和实际 `.env` 文件
+10. **移动端导入**: 使用相对路径 `../` 而不是别名 `@/` 或 `~/`
+11. **Expo 限制**: 注意 Expo 在离线模式下的限制,某些原生模块可能需要特殊配置
+12. **数据库 Schema 变更**: 当前无自动迁移,需要在 Supabase Dashboard 手动执行 SQL 或编写迁移脚本
