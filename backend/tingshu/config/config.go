@@ -12,13 +12,10 @@ type Config struct {
 	ServerPort string
 	ServerHost string
 
-	// 数据库配置
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	DBSSLMode  string
+	// Supabase 配置
+	SupabaseURL        string
+	SupabaseAnonKey    string
+	SupabaseServiceKey string
 
 	// Redis 配置
 	RedisAddr     string
@@ -27,9 +24,6 @@ type Config struct {
 
 	// JWT 配置
 	JWTSecret string
-
-	// API 密钥
-	GeminiAPIKey string
 
 	// CORS 配置
 	CORSAllowOrigins []string
@@ -45,16 +39,13 @@ func LoadConfig() error {
 
 	config := &Config{
 		// 服务器配置
-		ServerHost: getEnv("SERVER_HOST", "localhost"),
+		ServerHost: getEnv("SERVER_HOST", "0.0.0.0"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 
-		// 数据库配置
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", ""),
-		DBName:     getEnv("DB_NAME", "tingshu"),
-		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
+		// Supabase 配置
+		SupabaseURL:        getEnv("SUPABASE_URL", ""),
+		SupabaseAnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
+		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 
 		// Redis 配置
 		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
@@ -62,15 +53,12 @@ func LoadConfig() error {
 		RedisDB:       getEnvAsInt("REDIS_DB", 0),
 
 		// JWT 配置
-		JWTSecret: getEnv("JWT_SECRET", "your-secret-key"),
-
-		// API 密钥
-		GeminiAPIKey: getEnv("GEMINI_API_KEY", ""),
+		JWTSecret: getEnv("JWT_SECRET", ""),
 
 		// CORS 配置
 		CORSAllowOrigins: []string{
 			"http://localhost:3000",
-			"http://localhost:8081", // React Native Metro
+			"http://localhost:8081",
 		},
 	}
 

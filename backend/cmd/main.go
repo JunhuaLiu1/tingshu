@@ -24,9 +24,6 @@ func main() {
 		log.Fatal("Failed to init database:", err)
 	}
 
-	// 初始化 Redis
-	config.InitRedis()
-
 	// 初始化路由
 	router := api.SetupRoutes()
 
