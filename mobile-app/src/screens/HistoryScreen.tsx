@@ -5,13 +5,17 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
   Alert,
   SafeAreaView,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {Book} from '../types';
 import {ALL_BOOKS, getBookCoverUrl, getBookPlayCount} from '../data/mockData';
+import { tokens } from '../theme/tokens';
+import { layoutStyles } from '../theme/styles';
+import EmptyState from '../components/common/EmptyState';
+import CachedImage from '../components/common/CachedImage';
+import { useToast } from '../contexts/ToastContext';
 
 interface PlayHistoryItem {
   id: string;
@@ -22,34 +26,35 @@ interface PlayHistoryItem {
 }
 
 const HistoryScreen: React.FC = () => {
+  const { showToast } = useToast();
   const [history, setHistory] = useState<PlayHistoryItem[]>([
     {
       id: '1',
       book: ALL_BOOKS[0],
-      lastPlayed: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2小时前
+      lastPlayed: new Date(Date.now() - 2 * 60 * 60 * 1000),
       progress: 65,
-      duration: 3600, // 1小时
+      duration: 3600,
     },
     {
       id: '2',
       book: ALL_BOOKS[1],
-      lastPlayed: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5小时前
+      lastPlayed: new Date(Date.now() - 5 * 60 * 60 * 1000),
       progress: 30,
-      duration: 4200, // 1小时10分钟
+      duration: 4200,
     },
     {
       id: '3',
       book: ALL_BOOKS[2],
-      lastPlayed: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1天前
+      lastPlayed: new Date(Date.now() - 24 * 60 * 60 * 1000),
       progress: 100,
-      duration: 3000, // 50分钟
+      duration: 3000,
     },
     {
       id: '4',
       book: ALL_BOOKS[3],
-      lastPlayed: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3天前
+      lastPlayed: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       progress: 80,
-      duration: 4800, // 1小时20分钟
+      duration: 4800,
     },
   ]);
 
@@ -59,7 +64,14 @@ const HistoryScreen: React.FC = () => {
       '确定要清除所有播放历史吗？',
       [
         {text: '取消', style: 'cancel'},
-        {text: '清除', style: 'destructive', onPress: () => setHistory([])},
+        {
+          text: '清除', 
+          style: 'destructive', 
+          onPress: () => {
+            setHistory([]);
+            showToast({ type: 'success', message: '已清除播放历史' });
+          }
+        },
       ]
     );
   };
@@ -88,8 +100,8 @@ const HistoryScreen: React.FC = () => {
   };
 
   const renderHistoryItem = ({item}: {item: PlayHistoryItem}) => (
-    <TouchableOpacity style={styles.historyItem}>
-      <Image source={{uri: getBookCoverUrl(item.book)}} style={styles.historyCover} />
+    <TouchableOpacity style={styles.historyItem} activeOpacity={tokens.opacity.active}>
+      <CachedImage source={{uri: getBookCoverUrl(item.book)}} style={styles.historyCover} />
       <View style={styles.historyInfo}>
         <Text style={styles.historyTitle} numberOfLines={2}>
           {item.book.title}
@@ -117,159 +129,130 @@ const HistoryScreen: React.FC = () => {
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.moreButton}>
-        <MaterialIcons name="more-vert" size={20} color="#999" />
+      <TouchableOpacity style={styles.moreButton} activeOpacity={tokens.opacity.active}>
+        <MaterialIcons name="more-vert" size={20} color={tokens.colors.text.tertiary} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <MaterialIcons name="history" size={64} color="#ddd" />
-      <Text style={styles.emptyStateTitle}>暂无播放历史</Text>
-      <Text style={styles.emptyStateSubtitle}>
-        开始听书后，播放记录将显示在这里
-      </Text>
-    </View>
-  );
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-    <View style={styles.container}>
-      {/* 头部 */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>播放历史</Text>
-        {history.length > 0 && (
-          <TouchableOpacity onPress={clearHistory}>
-            <Text style={styles.clearText}>清除</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={layoutStyles.safeArea}>
+      <View style={styles.container}>
+        {/* 头部 */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>播放历史</Text>
+          {history.length > 0 && (
+            <TouchableOpacity onPress={clearHistory} activeOpacity={tokens.opacity.active}>
+              <Text style={styles.clearText}>清除</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* 历史列表 */}
+        {history.length === 0 ? (
+          <EmptyState
+            icon="history"
+            title="暂无播放历史"
+            subtitle="开始听书后，播放记录将显示在这里"
+          />
+        ) : (
+          <FlatList
+            data={history}
+            renderItem={renderHistoryItem}
+            keyExtractor={item => item.id}
+            style={styles.historyList}
+            showsVerticalScrollIndicator={false}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={10}
+          />
         )}
       </View>
-
-      {/* 历史列表 */}
-      {history.length === 0 ? (
-        renderEmptyState()
-      ) : (
-        <FlatList
-          data={history}
-          renderItem={renderHistoryItem}
-          keyExtractor={item => item.id}
-          style={styles.historyList}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F6F8',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F5F6F8',
+    backgroundColor: tokens.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 16,
+    backgroundColor: tokens.colors.surface,
+    padding: tokens.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: tokens.colors.border.light,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: tokens.typography.h3,
+    fontWeight: tokens.fontWeight.bold,
+    color: tokens.colors.text.primary,
   },
   clearText: {
-    color: '#FF6B35',
-    fontSize: 14,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    color: tokens.colors.primary,
+    fontSize: tokens.typography.caption,
   },
   historyList: {
     flex: 1,
-    padding: 16,
+    padding: tokens.spacing.md,
   },
   historyItem: {
     flexDirection: 'row',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: tokens.colors.surface,
+    borderRadius: tokens.radius.md,
+    padding: tokens.spacing.md,
+    marginBottom: tokens.spacing.md,
+    ...tokens.shadows.md,
   },
   historyCover: {
     width: 80,
     height: 100,
-    borderRadius: 8,
-    resizeMode: 'cover',
+    borderRadius: tokens.radius.sm,
   },
   historyInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: tokens.spacing.md,
     justifyContent: 'space-between',
   },
   historyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: tokens.typography.body,
+    fontWeight: tokens.fontWeight.semibold,
+    color: tokens.colors.text.primary,
     marginBottom: 4,
   },
   historyAuthor: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
+    fontSize: tokens.typography.caption,
+    color: tokens.colors.text.secondary,
+    marginBottom: tokens.spacing.sm,
   },
   progressContainer: {
-    marginBottom: 8,
+    marginBottom: tokens.spacing.sm,
   },
   progressBar: {
     height: 4,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: tokens.colors.border.default,
     borderRadius: 2,
     marginBottom: 4,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#FF6B35',
+    backgroundColor: tokens.colors.primary,
     borderRadius: 2,
   },
   progressText: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: tokens.typography.small,
+    color: tokens.colors.text.tertiary,
   },
   historyTime: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: tokens.typography.small,
+    color: tokens.colors.text.tertiary,
   },
   moreButton: {
-    padding: 8,
+    padding: tokens.spacing.sm,
   },
 });
 

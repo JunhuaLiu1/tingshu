@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,38 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
-  ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {Book} from '../types';
 import {searchApi} from '../services/api';
+import { tokens } from '../theme/tokens';
+import { layoutStyles } from '../theme/styles';
+import Button from '../components/common/Button';
+import EmptyState from '../components/common/EmptyState';
+import CachedImage from '../components/common/CachedImage';
+import Loading from '../components/common/Loading';
+import { useToast } from '../contexts/ToastContext';
 
 const SearchScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
   const [recentSearches] = useState(['三体', '百年孤独', '月亮与六便士']);
+  const searchInputRef = useRef<TextInput>(null);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+  }, []);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      showToast({ type: 'warning', message: '请输入搜索关键词' });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -30,6 +46,7 @@ const SearchScreen: React.FC = () => {
         setSearchResults(response.data || []);
       }
     } catch (error) {
+      showToast({ type: 'error', message: '搜索失败，请重试' });
       console.error('Search failed:', error);
     } finally {
       setLoading(false);
@@ -37,8 +54,8 @@ const SearchScreen: React.FC = () => {
   };
 
   const renderSearchResult = ({item}: {item: Book}) => (
-    <TouchableOpacity style={styles.resultCard}>
-      <Image source={{uri: item.cover_url}} style={styles.resultCover} />
+    <TouchableOpacity style={styles.resultCard} activeOpacity={tokens.opacity.active}>
+      <CachedImage source={{uri: item.cover_url}} style={styles.resultCover} />
       <View style={styles.resultInfo}>
         <Text style={styles.resultTitle} numberOfLines={2}>
           {item.title}
@@ -50,7 +67,7 @@ const SearchScreen: React.FC = () => {
           {item.description}
         </Text>
         <View style={styles.resultMeta}>
-          <MaterialIcons name="play-circle-filled" size={16} color="#FF6B35" />
+          <MaterialIcons name="play-circle-filled" size={16} color={tokens.colors.primary} />
           <Text style={styles.resultPlayCount}>
             {(item.play_count / 10000).toFixed(1)}万播放
           </Text>
@@ -63,19 +80,24 @@ const SearchScreen: React.FC = () => {
     <TouchableOpacity
       key={item}
       style={styles.recentSearchItem}
-      onPress={() => setSearchQuery(item)}>
-      <MaterialIcons name="history" size={16} color="#999" />
+      onPress={() => {
+        setSearchQuery(item);
+        handleSearch();
+      }}
+      activeOpacity={tokens.opacity.active}
+    >
+      <MaterialIcons name="history" size={16} color={tokens.colors.text.tertiary} />
       <Text style={styles.recentSearchText}>{item}</Text>
     </TouchableOpacity>
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <MaterialIcons name="search" size={64} color="#ddd" />
-      <Text style={styles.emptyStateTitle}>搜索书籍</Text>
-      <Text style={styles.emptyStateSubtitle}>
-        输入书名、作者或关键词开始搜索
-      </Text>
+    <View style={styles.emptyContainer}>
+      <EmptyState
+        icon="search"
+        title="搜索书籍"
+        subtitle="输入书名、作者或关键词开始搜索"
+      />
       <View style={styles.recentSearchesContainer}>
         <Text style={styles.recentSearchesTitle}>最近搜索</Text>
         <View style={styles.recentSearchesList}>
@@ -86,143 +108,110 @@ const SearchScreen: React.FC = () => {
   );
 
   const renderNoResults = () => (
-    <View style={styles.emptyState}>
-      <MaterialIcons name="search-off" size={64} color="#ddd" />
-      <Text style={styles.emptyStateTitle}>未找到相关书籍</Text>
-      <Text style={styles.emptyStateSubtitle}>
-        试试其他关键词或浏览推荐内容
-      </Text>
-    </View>
+    <EmptyState
+      icon="search-off"
+      title="未找到相关书籍"
+      subtitle="试试其他关键词或浏览推荐内容"
+    />
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={layoutStyles.safeArea}>
       <View style={styles.container}>
         {/* 搜索栏 */}
         <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <MaterialIcons name="search" size={20} color="#999" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="搜索书籍、作者..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <MaterialIcons name="clear" size={20} color="#999" />
-            </TouchableOpacity>
-          )}
+          <View style={styles.searchInputContainer}>
+            <MaterialIcons name="search" size={20} color={tokens.colors.text.tertiary} />
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchInput}
+              placeholder="搜索书籍、作者..."
+              placeholderTextColor={tokens.colors.text.tertiary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+              autoFocus={true}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={tokens.opacity.active}>
+                <MaterialIcons name="clear" size={20} color={tokens.colors.text.tertiary} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <Button variant="primary" size="small" onPress={handleSearch}>
+            搜索
+          </Button>
         </View>
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>搜索</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* 搜索结果 */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF6B35" />
-          <Text style={styles.loadingText}>搜索中...</Text>
-        </View>
-      ) : searchQuery.trim() === '' ? (
-        renderEmptyState()
-      ) : searchResults.length === 0 ? (
-        renderNoResults()
-      ) : (
-        <FlatList
-          data={searchResults}
-          renderItem={renderSearchResult}
-          keyExtractor={item => item.id.toString()}
-          style={styles.resultsList}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+        {/* 搜索结果 */}
+        <Loading visible={loading} fullScreen={false} />
+        {!loading && (
+          searchQuery.trim() === '' ? (
+            renderEmptyState()
+          ) : searchResults.length === 0 ? (
+            renderNoResults()
+          ) : (
+            <FlatList
+              data={searchResults}
+              renderItem={renderSearchResult}
+              keyExtractor={item => item.id.toString()}
+              style={styles.resultsList}
+              showsVerticalScrollIndicator={false}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              initialNumToRender={10}
+            />
+          )
+        )}
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F6F8',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F5F6F8',
+    backgroundColor: tokens.colors.background,
   },
   searchContainer: {
     flexDirection: 'row',
-    padding: 16,
-    backgroundColor: 'white',
+    padding: tokens.spacing.md,
+    backgroundColor: tokens.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: tokens.colors.border.light,
+    alignItems: 'center',
   },
   searchInputContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F6F8',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    marginRight: 12,
+    backgroundColor: tokens.colors.background,
+    borderRadius: tokens.radius.full,
+    paddingHorizontal: tokens.spacing.md,
+    marginRight: tokens.spacing.md,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
-    marginRight: 8,
-    fontSize: 16,
+    marginLeft: tokens.spacing.sm,
+    marginRight: tokens.spacing.sm,
+    fontSize: tokens.typography.body,
+    color: tokens.colors.text.primary,
+    paddingVertical: tokens.spacing.md,
   },
-  searchButton: {
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-  },
-  searchButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  loadingContainer: {
+  emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#666',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 32,
   },
   recentSearchesContainer: {
-    width: '100%',
-    marginTop: 32,
+    paddingHorizontal: tokens.spacing.xl,
+    marginTop: tokens.spacing.lg,
   },
   recentSearchesTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 16,
+    fontSize: tokens.typography.body,
+    fontWeight: tokens.fontWeight.semibold,
+    color: tokens.colors.text.primary,
+    marginBottom: tokens.spacing.md,
   },
   recentSearchesList: {
     flexDirection: 'column',
@@ -230,67 +219,62 @@ const styles = StyleSheet.create({
   recentSearchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
+    backgroundColor: tokens.colors.surface,
+    padding: tokens.spacing.md,
+    borderRadius: tokens.radius.sm,
+    marginBottom: tokens.spacing.sm,
   },
   recentSearchText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#333',
+    marginLeft: tokens.spacing.sm,
+    fontSize: tokens.typography.caption,
+    color: tokens.colors.text.primary,
   },
   resultsList: {
     flex: 1,
-    padding: 16,
+    padding: tokens.spacing.md,
   },
   resultCard: {
     flexDirection: 'row',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: tokens.colors.surface,
+    borderRadius: tokens.radius.md,
+    padding: tokens.spacing.md,
+    marginBottom: tokens.spacing.md,
+    ...tokens.shadows.md,
   },
   resultCover: {
     width: 80,
     height: 100,
-    borderRadius: 8,
-    resizeMode: 'cover',
+    borderRadius: tokens.radius.sm,
   },
   resultInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: tokens.spacing.md,
     justifyContent: 'space-between',
   },
   resultTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: tokens.typography.body,
+    fontWeight: tokens.fontWeight.semibold,
+    color: tokens.colors.text.primary,
     marginBottom: 4,
   },
   resultAuthor: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
+    fontSize: tokens.typography.caption,
+    color: tokens.colors.text.secondary,
+    marginBottom: tokens.spacing.sm,
   },
   resultDescription: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: tokens.typography.small,
+    color: tokens.colors.text.tertiary,
     lineHeight: 16,
-    marginBottom: 8,
+    marginBottom: tokens.spacing.sm,
   },
   resultMeta: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   resultPlayCount: {
-    fontSize: 12,
-    color: '#FF6B35',
+    fontSize: tokens.typography.small,
+    color: tokens.colors.primary,
     marginLeft: 4,
   },
 });
