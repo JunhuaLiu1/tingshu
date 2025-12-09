@@ -3,7 +3,9 @@
     "allow": [
       "Bash(dir /b /s)",
       "Bash(tree -L 3 -I 'node_modules|.git')",
-      "Bash(tree -a -L 3)"
+      "Bash(tree -a -L 3)",
+      "mcp__github__search_repositories",
+      "mcp__github__get_file_contents"
     ],
     "deny": [],
     "ask": []
