@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   FlatList,
   TouchableOpacity,
   SafeAreaView,
+  Keyboard,
+  InteractionManager,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {Book} from '../types';
@@ -18,43 +20,107 @@ import EmptyState from '../components/common/EmptyState';
 import CachedImage from '../components/common/CachedImage';
 import Loading from '../components/common/Loading';
 import { useToast } from '../contexts/ToastContext';
+import { useSearchState, SearchSuggestion } from '../hooks/useSearchState';
+import SearchSuggestions from '../components/SearchSuggestions';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+const ITEM_HEIGHT = 140;
 
 const SearchScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
-  const [recentSearches] = useState(['三体', '百年孤独', '月亮与六便士']);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [localSuggestions, setLocalSuggestions] = useState<SearchSuggestion[]>([]);
+
   const searchInputRef = useRef<TextInput>(null);
   const { showToast } = useToast();
+  const navigation = useNavigation<NavigationProp>();
 
+  const {
+    searchHistory,
+    hotSearches,
+    suggestions,
+    isLoadingHistory,
+    saveSearchHistory,
+    clearSearchHistory,
+    generateSuggestions
+  } = useSearchState();
+
+  // 自动聚焦优化
   useEffect(() => {
-    setTimeout(() => {
-      searchInputRef.current?.focus();
+    const timeout = setTimeout(() => {
+      InteractionManager.runAfterInteractions(() => {
+        searchInputRef.current?.focus();
+      });
     }, 100);
+
+    return () => clearTimeout(timeout);
   }, []);
 
+  // 实时生成搜索建议
+  useEffect(() => {
+    const newSuggestions = generateSuggestions(searchQuery);
+    setLocalSuggestions(newSuggestions);
+  }, [searchQuery, generateSuggestions]);
+
+  // 搜索函数
   const handleSearch = async () => {
+    setError(null);
+
     if (!searchQuery.trim()) {
       showToast({ type: 'warning', message: '请输入搜索关键词' });
       return;
     }
 
+    saveSearchHistory(searchQuery);
     setLoading(true);
+
     try {
       const response = await searchApi.searchBooks(searchQuery);
       if (response.code === 200) {
         setSearchResults(response.data || []);
       }
-    } catch (error) {
-      showToast({ type: 'error', message: '搜索失败，请重试' });
-      console.error('Search failed:', error);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '搜索失败，请重试';
+      setError(message);
+      showToast({ type: 'error', message });
     } finally {
       setLoading(false);
     }
   };
 
-  const renderSearchResult = ({item}: {item: Book}) => (
-    <TouchableOpacity style={styles.resultCard} activeOpacity={tokens.opacity.active}>
+  // 下拉刷新
+  const onRefresh = useCallback(async () => {
+    if (!searchQuery.trim()) return;
+
+    setRefreshing(true);
+    try {
+      await handleSearch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [searchQuery, handleSearch]);
+
+  // 获取固定高度
+  const getItemLayout = useCallback((data: Book[] | null, index: number) => ({
+    length: ITEM_HEIGHT,
+    offset: ITEM_HEIGHT * index,
+    index,
+  }), []);
+
+  // 渲染搜索结果
+  const renderSearchResult = useCallback(({item}: {item: Book}) => (
+    <TouchableOpacity
+      style={styles.resultCard}
+      activeOpacity={tokens.opacity.active}
+      onPress={() => navigation.navigate('Player', { bookId: item.id })}
+    >
       <CachedImage source={{uri: item.cover_url}} style={styles.resultCover} />
       <View style={styles.resultInfo}>
         <Text style={styles.resultTitle} numberOfLines={2}>
@@ -74,23 +140,29 @@ const SearchScreen: React.FC = () => {
         </View>
       </View>
     </TouchableOpacity>
+  ), [navigation]);
+
+  // 渲染列表头部
+  const renderListHeader = useCallback(() => (
+    <View style={styles.listHeader}>
+      <Text style={styles.resultCount}>
+        找到 {searchResults.length} 个结果
+      </Text>
+    </View>
+  ), [searchResults.length]);
+
+  // 渲染错误状态
+  const renderErrorState = () => (
+    <EmptyState
+      icon="error-outline"
+      title="搜索出错"
+      subtitle={error || '搜索失败，请重试'}
+      actionText="重试"
+      onActionPress={handleSearch}
+    />
   );
 
-  const renderRecentSearch = (item: string) => (
-    <TouchableOpacity
-      key={item}
-      style={styles.recentSearchItem}
-      onPress={() => {
-        setSearchQuery(item);
-        handleSearch();
-      }}
-      activeOpacity={tokens.opacity.active}
-    >
-      <MaterialIcons name="history" size={16} color={tokens.colors.text.tertiary} />
-      <Text style={styles.recentSearchText}>{item}</Text>
-    </TouchableOpacity>
-  );
-
+  // 渲染空状态（搜索建议）
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <EmptyState
@@ -98,15 +170,18 @@ const SearchScreen: React.FC = () => {
         title="搜索书籍"
         subtitle="输入书名、作者或关键词开始搜索"
       />
-      <View style={styles.recentSearchesContainer}>
-        <Text style={styles.recentSearchesTitle}>最近搜索</Text>
-        <View style={styles.recentSearchesList}>
-          {recentSearches.map(renderRecentSearch)}
-        </View>
-      </View>
+      <SearchSuggestions
+        suggestions={localSuggestions}
+        onSuggestionPress={(text) => {
+          setSearchQuery(text);
+          handleSearch();
+        }}
+        onClearHistory={clearSearchHistory}
+      />
     </View>
   );
 
+  // 渲染无结果
   const renderNoResults = () => (
     <EmptyState
       icon="search-off"
@@ -144,26 +219,31 @@ const SearchScreen: React.FC = () => {
           </Button>
         </View>
 
-        {/* 搜索结果 */}
-        <Loading visible={loading} fullScreen={false} />
-        {!loading && (
-          searchQuery.trim() === '' ? (
-            renderEmptyState()
-          ) : searchResults.length === 0 ? (
-            renderNoResults()
-          ) : (
-            <FlatList
-              data={searchResults}
-              renderItem={renderSearchResult}
-              keyExtractor={item => item.id.toString()}
-              style={styles.resultsList}
-              showsVerticalScrollIndicator={false}
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={10}
-              windowSize={10}
-              initialNumToRender={10}
-            />
-          )
+        {/* 内容区域 */}
+        {loading ? (
+          <Loading visible={true} fullScreen={false} />
+        ) : error ? (
+          renderErrorState()
+        ) : searchQuery.trim() === '' ? (
+          renderEmptyState()
+        ) : searchResults.length === 0 ? (
+          renderNoResults()
+        ) : (
+          <FlatList
+            data={searchResults}
+            renderItem={renderSearchResult}
+            keyExtractor={item => item.id.toString()}
+            getItemLayout={getItemLayout}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            ListHeaderComponent={renderListHeader}
+            style={styles.resultsList}
+            showsVerticalScrollIndicator={false}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={10}
+          />
         )}
       </View>
     </SafeAreaView>
@@ -182,6 +262,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.border.light,
     alignItems: 'center',
+    gap: tokens.spacing.md,
   },
   searchInputContainer: {
     flex: 1,
@@ -190,7 +271,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.background,
     borderRadius: tokens.radius.full,
     paddingHorizontal: tokens.spacing.md,
-    marginRight: tokens.spacing.md,
   },
   searchInput: {
     flex: 1,
@@ -203,35 +283,17 @@ const styles = StyleSheet.create({
   emptyContainer: {
     flex: 1,
   },
-  recentSearchesContainer: {
-    paddingHorizontal: tokens.spacing.xl,
-    marginTop: tokens.spacing.lg,
-  },
-  recentSearchesTitle: {
-    fontSize: tokens.typography.body,
-    fontWeight: tokens.fontWeight.semibold,
-    color: tokens.colors.text.primary,
-    marginBottom: tokens.spacing.md,
-  },
-  recentSearchesList: {
-    flexDirection: 'column',
-  },
-  recentSearchItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: tokens.colors.surface,
-    padding: tokens.spacing.md,
-    borderRadius: tokens.radius.sm,
-    marginBottom: tokens.spacing.sm,
-  },
-  recentSearchText: {
-    marginLeft: tokens.spacing.sm,
-    fontSize: tokens.typography.caption,
-    color: tokens.colors.text.primary,
-  },
   resultsList: {
     flex: 1,
     padding: tokens.spacing.md,
+  },
+  listHeader: {
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
+  },
+  resultCount: {
+    fontSize: tokens.typography.caption,
+    color: tokens.colors.text.secondary,
   },
   resultCard: {
     flexDirection: 'row',
