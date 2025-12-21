@@ -110,7 +110,12 @@ export interface SearchResult {
 export type RootStackParamList = {
   Main: undefined;
   BookDetail: { bookId: number };
-  Player: { bookId: number; episodeId?: number };
+  Player: { bookId: number; episodeId?: number; progress?: number };
+  ProfileEdit: undefined;
+  Favorites: undefined;
+  Downloads: undefined;
+  Feedback: undefined;
+  Help: undefined;
 };
 
 export type TabParamList = {
