@@ -10,9 +10,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, Book } from '../types';
+import { router } from 'expo-router';
+import { Book } from '../types';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
 import EmptyState from '../components/common/EmptyState';
@@ -20,13 +19,10 @@ import CachedImage from '../components/common/CachedImage';
 import { useToast } from '../contexts/ToastContext';
 import { usePlayHistory, PlayHistoryItem } from '../hooks/usePlayHistory';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
 const ITEM_HEIGHT = 120;
 
 const HistoryScreen: React.FC = () => {
   const { showToast } = useToast();
-  const navigation = useNavigation<NavigationProp>();
 
   const {
     history,
@@ -202,10 +198,13 @@ const HistoryScreen: React.FC = () => {
     <TouchableOpacity
       style={styles.historyItem}
       activeOpacity={tokens.opacity.active}
-      onPress={() => navigation.navigate('Player', {
-        bookId: item.bookId,
-        episodeId: item.episodeId,
-        progress: item.progress
+      onPress={() => router.push({
+        pathname: '/player',
+        params: {
+          bookId: item.bookId.toString(),
+          episodeId: item.episodeId?.toString(),
+          progress: item.progress.toString()
+        }
       })}
       onLongPress={() => handleLongPress(item)}
     >
@@ -245,7 +244,7 @@ const HistoryScreen: React.FC = () => {
         <MaterialIcons name="more-vert" size={20} color={tokens.colors.text.tertiary} />
       </TouchableOpacity>
     </TouchableOpacity>
-  ), [navigation, handleLongPress, handleMorePress, formatDuration, formatTimeAgo]);
+  ), [handleLongPress, handleMorePress, formatDuration, formatTimeAgo]);
 
   // 渲染错误状态
   const renderErrorState = useCallback(() => (
@@ -265,9 +264,9 @@ const HistoryScreen: React.FC = () => {
       title="暂无播放历史"
       subtitle="开始听书后，播放记录将显示在这里"
       actionText="去搜索"
-      onActionPress={() => navigation.navigate('Search')}
+      onActionPress={() => router.push('/search')}
     />
-  ), [navigation]);
+  ), []);
 
   return (
     <SafeAreaView style={layoutStyles.safeArea}>

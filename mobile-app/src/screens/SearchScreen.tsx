@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react';
+import React, {useState, useRef, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -22,11 +22,7 @@ import Loading from '../components/common/Loading';
 import { useToast } from '../contexts/ToastContext';
 import { useSearchState, SearchSuggestion } from '../hooks/useSearchState';
 import SearchSuggestions from '../components/SearchSuggestions';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { router } from 'expo-router';
 
 const ITEM_HEIGHT = 140;
 
@@ -36,11 +32,9 @@ const SearchScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [localSuggestions, setLocalSuggestions] = useState<SearchSuggestion[]>([]);
 
   const searchInputRef = useRef<TextInput>(null);
   const { showToast } = useToast();
-  const navigation = useNavigation<NavigationProp>();
 
   const {
     searchHistory,
@@ -64,10 +58,10 @@ const SearchScreen: React.FC = () => {
   }, []);
 
   // 实时生成搜索建议
-  useEffect(() => {
-    const newSuggestions = generateSuggestions(searchQuery);
-    setLocalSuggestions(newSuggestions);
-  }, [searchQuery, generateSuggestions]);
+  const localSuggestions = useMemo(
+    () => generateSuggestions(searchQuery),
+    [searchQuery, generateSuggestions]
+  );
 
   // 搜索函数
   const handleSearch = async () => {
@@ -119,7 +113,13 @@ const SearchScreen: React.FC = () => {
     <TouchableOpacity
       style={styles.resultCard}
       activeOpacity={tokens.opacity.active}
-      onPress={() => navigation.navigate('Player', { bookId: item.id })}
+      onPress={() => {
+        const bookId = typeof item.id === 'string' ? parseInt(item.id) : item.id;
+        router.push({
+          pathname: '/player',
+          params: { bookId: bookId.toString() }
+        });
+      }}
     >
       <CachedImage source={{uri: item.cover_url}} style={styles.resultCover} />
       <View style={styles.resultInfo}>
@@ -140,7 +140,7 @@ const SearchScreen: React.FC = () => {
         </View>
       </View>
     </TouchableOpacity>
-  ), [navigation]);
+  ), []);
 
   // 渲染列表头部
   const renderListHeader = useCallback(() => (

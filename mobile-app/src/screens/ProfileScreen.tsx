@@ -11,9 +11,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, User } from '../types';
+import { router } from 'expo-router';
+import { User } from '../types';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
 import CachedImage from '../components/common/CachedImage';
@@ -25,7 +24,6 @@ import { getAppVersion } from '../utils/appVersion';
 
 const ProfileScreen: React.FC = () => {
   const { showToast } = useToast();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // 使用 Hook 获取用户数据和设置
   const {
@@ -107,11 +105,11 @@ const ProfileScreen: React.FC = () => {
     // 检查屏幕是否存在，如果不存在则显示提示
     const availableScreens = ['ProfileEdit', 'Favorites', 'Downloads', 'Feedback', 'Help'];
     if (availableScreens.includes(screen)) {
-      navigation.navigate(screen as any);
+      showToast({ type: 'info', message: '功能开发中' });
     } else {
       showToast({ type: 'info', message: '功能开发中' });
     }
-  }, [navigation, showToast]);
+  }, [showToast]);
 
   // 渲染用户信息头部
   const renderProfileHeader = useCallback(() => (
@@ -281,7 +279,7 @@ const ProfileScreen: React.FC = () => {
         {renderSection('个人设置', (
           <>
             {renderMenuItem('person', '编辑资料', profile.username, () => handleMenuPress('ProfileEdit'))}
-            {renderMenuItem('account-circle', '账号管理', '设置登录密码', () => handleMenuPress('ProfileEdit'))}
+            {renderMenuItem('account-circle' as any, '账号管理', '设置登录密码', () => handleMenuPress('ProfileEdit'))}
             {renderMenuItem('notifications', '消息通知',
               stats?.messages ? `你有${stats.messages}条新消息` : '暂无新消息',
               () => handleMenuPress('ProfileEdit')
@@ -292,7 +290,7 @@ const ProfileScreen: React.FC = () => {
         {/* 播放设置 */}
         {renderSection('播放设置', (
           <>
-            {renderSettingsItem('play-arrow', '自动播放下一集', settings.autoPlay, (value) => updateSettings({ autoPlay: value }))}
+            {renderSettingsItem('play-arrow' as any, '自动播放下一集', settings.autoPlay, (value) => updateSettings({ autoPlay: value }))}
             {renderSettingsItem('wifi', '仅WiFi下下载', settings.downloadOnlyWifi, (value) => updateSettings({ downloadOnlyWifi: value }))}
             {renderSettingsItem('notifications', '推送通知', settings.notifications, (value) => updateSettings({ notifications: value }))}
           </>
