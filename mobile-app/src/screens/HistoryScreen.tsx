@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,76 +7,121 @@ import {
   TouchableOpacity,
   Alert,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
-import {MaterialIcons} from '@expo/vector-icons';
-import {Book} from '../types';
-import {ALL_BOOKS, getBookCoverUrl, getBookPlayCount} from '../data/mockData';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList, Book } from '../types';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
 import EmptyState from '../components/common/EmptyState';
 import CachedImage from '../components/common/CachedImage';
 import { useToast } from '../contexts/ToastContext';
+import { usePlayHistory, PlayHistoryItem } from '../hooks/usePlayHistory';
 
-interface PlayHistoryItem {
-  id: string;
-  book: Book;
-  lastPlayed: Date;
-  progress: number; // 播放进度百分比
-  duration: number; // 总时长
-}
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+const ITEM_HEIGHT = 120;
 
 const HistoryScreen: React.FC = () => {
   const { showToast } = useToast();
-  const [history, setHistory] = useState<PlayHistoryItem[]>([
-    {
-      id: '1',
-      book: ALL_BOOKS[0],
-      lastPlayed: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      progress: 65,
-      duration: 3600,
-    },
-    {
-      id: '2',
-      book: ALL_BOOKS[1],
-      lastPlayed: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      progress: 30,
-      duration: 4200,
-    },
-    {
-      id: '3',
-      book: ALL_BOOKS[2],
-      lastPlayed: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      progress: 100,
-      duration: 3000,
-    },
-    {
-      id: '4',
-      book: ALL_BOOKS[3],
-      lastPlayed: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      progress: 80,
-      duration: 4800,
-    },
-  ]);
+  const navigation = useNavigation<NavigationProp>();
 
-  const clearHistory = () => {
+  const {
+    history,
+    isLoading,
+    error,
+    loadHistory,
+    removeHistory,
+    clearHistory
+  } = usePlayHistory();
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent');
+
+  // 下拉刷新
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadHistory();
+      showToast({ type: 'success', message: '已刷新' });
+    } catch (err) {
+      showToast({ type: 'error', message: '刷新失败' });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadHistory, showToast]);
+
+  // 清空历史确认
+  const handleClearHistory = useCallback(() => {
     Alert.alert(
       '清除历史',
       '确定要清除所有播放历史吗？',
       [
-        {text: '取消', style: 'cancel'},
+        { text: '取消', style: 'cancel' },
         {
-          text: '清除', 
-          style: 'destructive', 
-          onPress: () => {
-            setHistory([]);
-            showToast({ type: 'success', message: '已清除播放历史' });
+          text: '清除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearHistory();
+              showToast({ type: 'success', message: '已清除播放历史' });
+            } catch (err) {
+              showToast({ type: 'error', message: '清除失败' });
+            }
           }
-        },
+        }
       ]
     );
-  };
+  }, [clearHistory, showToast]);
 
-  const formatTimeAgo = (date: Date): string => {
+  // 更多按钮操作
+  const handleMorePress = useCallback((item: PlayHistoryItem) => {
+    Alert.alert('操作', item.title, [
+      {
+        text: '删除记录',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await removeHistory(item.id);
+            showToast({ type: 'success', message: '已删除' });
+          } catch (err) {
+            showToast({ type: 'error', message: '删除失败' });
+          }
+        }
+      },
+      {
+        text: '收藏',
+        onPress: () => {
+          showToast({ type: 'info', message: '已收藏' });
+        }
+      },
+      { text: '取消', style: 'cancel' }
+    ]);
+  }, [removeHistory, showToast]);
+
+  // 长按删除单条
+  const handleLongPress = useCallback((item: PlayHistoryItem) => {
+    Alert.alert('删除记录', `确定删除 "${item.title}" 吗？`, [
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await removeHistory(item.id);
+            showToast({ type: 'success', message: '已删除' });
+          } catch (err) {
+            showToast({ type: 'error', message: '删除失败' });
+          }
+        }
+      },
+      { text: '取消', style: 'cancel' }
+    ]);
+  }, [removeHistory, showToast]);
+
+  // 格式化时间
+  const formatTimeAgo = useCallback((date: Date): string => {
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
@@ -87,9 +132,10 @@ const HistoryScreen: React.FC = () => {
     if (diffInDays < 7) return `${diffInDays}天前`;
 
     return `${Math.floor(diffInDays / 7)}周前`;
-  };
+  }, []);
 
-  const formatDuration = (seconds: number): string => {
+  // 格式化时长
+  const formatDuration = useCallback((seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
 
@@ -97,17 +143,79 @@ const HistoryScreen: React.FC = () => {
       return `${hours}小时${minutes}分钟`;
     }
     return `${minutes}分钟`;
-  };
+  }, []);
 
-  const renderHistoryItem = ({item}: {item: PlayHistoryItem}) => (
-    <TouchableOpacity style={styles.historyItem} activeOpacity={tokens.opacity.active}>
-      <CachedImage source={{uri: getBookCoverUrl(item.book)}} style={styles.historyCover} />
+  // 排序逻辑
+  const sortedHistory = useMemo(() => {
+    const sorted = [...history];
+    switch (sortBy) {
+      case 'recent':
+        return sorted.sort((a, b) => b.lastPlayed.getTime() - a.lastPlayed.getTime());
+      case 'progress':
+        return sorted.sort((a, b) => b.progress - a.progress);
+      case 'title':
+        return sorted.sort((a, b) => a.title.localeCompare(b.title));
+      default:
+        return sorted;
+    }
+  }, [history, sortBy]);
+
+  // 渲染列表头部
+  const renderListHeader = useCallback(() => (
+    <View style={styles.listHeader}>
+      <Text style={styles.resultCount}>
+        共 {history.length} 条播放记录
+      </Text>
+      {history.length > 0 && (
+        <View style={styles.sortContainer}>
+          <TouchableOpacity
+            style={[styles.sortButton, sortBy === 'recent' && styles.sortButtonActive]}
+            onPress={() => setSortBy('recent')}
+          >
+            <Text style={[styles.sortText, sortBy === 'recent' && styles.sortTextActive]}>
+              最近
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sortButton, sortBy === 'progress' && styles.sortButtonActive]}
+            onPress={() => setSortBy('progress')}
+          >
+            <Text style={[styles.sortText, sortBy === 'progress' && styles.sortTextActive]}>
+              进度
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sortButton, sortBy === 'title' && styles.sortButtonActive]}
+            onPress={() => setSortBy('title')}
+          >
+            <Text style={[styles.sortText, sortBy === 'title' && styles.sortTextActive]}>
+              标题
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  ), [history.length, sortBy]);
+
+  // 渲染历史项
+  const renderHistoryItem = useCallback(({ item }: { item: PlayHistoryItem }) => (
+    <TouchableOpacity
+      style={styles.historyItem}
+      activeOpacity={tokens.opacity.active}
+      onPress={() => navigation.navigate('Player', {
+        bookId: item.bookId,
+        episodeId: item.episodeId,
+        progress: item.progress
+      })}
+      onLongPress={() => handleLongPress(item)}
+    >
+      <CachedImage source={{ uri: item.coverUrl }} style={styles.historyCover} />
       <View style={styles.historyInfo}>
         <Text style={styles.historyTitle} numberOfLines={2}>
-          {item.book.title}
+          {item.title}
         </Text>
         <Text style={styles.historyAuthor} numberOfLines={1}>
-          {item.book.author}
+          {item.author}
         </Text>
 
         <View style={styles.progressContainer}>
@@ -115,7 +223,7 @@ const HistoryScreen: React.FC = () => {
             <View
               style={[
                 styles.progressFill,
-                {width: `${item.progress}%`}
+                { width: `${item.progress}%` }
               ]}
             />
           </View>
@@ -129,11 +237,37 @@ const HistoryScreen: React.FC = () => {
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.moreButton} activeOpacity={tokens.opacity.active}>
+      <TouchableOpacity
+        style={styles.moreButton}
+        activeOpacity={tokens.opacity.active}
+        onPress={() => handleMorePress(item)}
+      >
         <MaterialIcons name="more-vert" size={20} color={tokens.colors.text.tertiary} />
       </TouchableOpacity>
     </TouchableOpacity>
-  );
+  ), [navigation, handleLongPress, handleMorePress, formatDuration, formatTimeAgo]);
+
+  // 渲染错误状态
+  const renderErrorState = useCallback(() => (
+    <EmptyState
+      icon="error-outline"
+      title="加载失败"
+      subtitle={error || '加载历史记录失败，请重试'}
+      actionText="重试"
+      onActionPress={loadHistory}
+    />
+  ), [error, loadHistory]);
+
+  // 渲染空状态
+  const renderEmptyState = useCallback(() => (
+    <EmptyState
+      icon="history"
+      title="暂无播放历史"
+      subtitle="开始听书后，播放记录将显示在这里"
+      actionText="去搜索"
+      onActionPress={() => navigation.navigate('Search')}
+    />
+  ), [navigation]);
 
   return (
     <SafeAreaView style={layoutStyles.safeArea}>
@@ -141,25 +275,43 @@ const HistoryScreen: React.FC = () => {
         {/* 头部 */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>播放历史</Text>
-          {history.length > 0 && (
-            <TouchableOpacity onPress={clearHistory} activeOpacity={tokens.opacity.active}>
+          {sortedHistory.length > 0 && (
+            <TouchableOpacity onPress={handleClearHistory} activeOpacity={tokens.opacity.active}>
               <Text style={styles.clearText}>清除</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* 历史列表 */}
-        {history.length === 0 ? (
-          <EmptyState
-            icon="history"
-            title="暂无播放历史"
-            subtitle="开始听书后，播放记录将显示在这里"
-          />
+        {/* 内容区域 */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>加载中...</Text>
+          </View>
+        ) : error ? (
+          renderErrorState()
+        ) : sortedHistory.length === 0 ? (
+          renderEmptyState()
         ) : (
           <FlatList
-            data={history}
+            data={sortedHistory}
             renderItem={renderHistoryItem}
             keyExtractor={item => item.id}
+            getItemLayout={(data, index) => ({
+              length: ITEM_HEIGHT,
+              offset: ITEM_HEIGHT * index,
+              index,
+            })}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[tokens.colors.primary]}
+                tintColor={tokens.colors.primary}
+              />
+            }
+            ListHeaderComponent={renderListHeader}
             style={styles.historyList}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}
@@ -195,10 +347,51 @@ const styles = StyleSheet.create({
   clearText: {
     color: tokens.colors.primary,
     fontSize: tokens.typography.caption,
+    fontWeight: tokens.fontWeight.medium,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: tokens.typography.body,
+    color: tokens.colors.text.secondary,
   },
   historyList: {
     flex: 1,
     padding: tokens.spacing.md,
+  },
+  listHeader: {
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
+    marginBottom: tokens.spacing.sm,
+  },
+  resultCount: {
+    fontSize: tokens.typography.caption,
+    color: tokens.colors.text.secondary,
+    marginBottom: tokens.spacing.sm,
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    gap: tokens.spacing.sm,
+  },
+  sortButton: {
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: tokens.spacing.xs,
+    borderRadius: tokens.radius.full,
+    backgroundColor: tokens.colors.surface,
+  },
+  sortButtonActive: {
+    backgroundColor: tokens.colors.primary,
+  },
+  sortText: {
+    fontSize: tokens.typography.small,
+    color: tokens.colors.text.secondary,
+  },
+  sortTextActive: {
+    color: tokens.colors.background,
+    fontWeight: tokens.fontWeight.medium,
   },
   historyItem: {
     flexDirection: 'row',
