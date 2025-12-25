@@ -5,7 +5,9 @@
       "Bash(tree -L 3 -I 'node_modules|.git')",
       "Bash(tree -a -L 3)",
       "mcp__github__search_repositories",
-      "mcp__github__get_file_contents"
+      "mcp__github__get_file_contents",
+      "Skill(using-superpowers)",
+      "Skill(frontend-design)"
     ],
     "deny": [],
     "ask": []
