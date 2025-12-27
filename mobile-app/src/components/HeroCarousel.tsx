@@ -26,9 +26,8 @@ const { width } = Dimensions.get("window");
 const HeroCarousel: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // 自动轮播 - 修复依赖数组
+  // 自动轮播
   useEffect(() => {
     const timer = setInterval(() => {
       const nextIndex = (currentIndex + 1) % HERO_BOOKS.length;
@@ -37,7 +36,7 @@ const HeroCarousel: React.FC = () => {
     }, CAROUSEL_CONFIG.autoScrollInterval);
 
     return () => clearInterval(timer);
-  }, [currentIndex, HERO_BOOKS.length]);
+  }, [currentIndex]);
 
   const handleMomentumScrollEnd = useCallback(
     (event: { nativeEvent: { contentOffset: { x: number } } }) => {
