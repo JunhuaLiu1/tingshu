@@ -8,51 +8,51 @@
 // 统计信息配置
 export const STATS_CONFIG = {
   carousel: {
-    playCount: '1.2k',        // 示例数据，实际应从 API 获取
-    remainingTime: '45m left', // 示例数据，实际应从 API 获取
+    playCount: "1.2k", // 示例数据，实际应从 API 获取
+    remainingTime: "45m left", // 示例数据，实际应从 API 获取
   },
 } as const;
 
 // 颜色配置（扩展自 tokens.ts）
 export const COLORS = {
-  primary: '#FF6B35',
-  primaryLight: '#FF8C5A',
-  primaryDark: '#E65A2B',
+  primary: "#FF6B35",
+  primaryLight: "#FF8C5A",
+  primaryDark: "#E65A2B",
 
-  background: '#F5F6F8',
-  surface: '#FFFFFF',
+  background: "#F5F6F8",
+  surface: "#FFFFFF",
 
   text: {
-    primary: '#333333',
-    secondary: '#666666',
-    tertiary: '#999999',
-    inverse: '#FFFFFF',
+    primary: "#333333",
+    secondary: "#666666",
+    tertiary: "#999999",
+    inverse: "#FFFFFF",
   },
 
   border: {
-    light: '#F0F0F0',
-    default: '#E0E0E0',
-    dark: '#CCCCCC',
-    dashed: 'rgba(0,0,0,0.1)',
+    light: "#F0F0F0",
+    default: "#E0E0E0",
+    dark: "#CCCCCC",
+    dashed: "rgba(0,0,0,0.1)",
   },
 
   // 组件特定颜色
   heroCard: {
-    background: '#FDE4D0',
-    shadow: '#FF6B35',
-    notch: '#F5F6F8',
-    badgeOverlay: 'rgba(255,255,255,0.4)',
+    background: "#FDE4D0",
+    shadow: "#FF6B35",
+    notch: "#F5F6F8",
+    badgeOverlay: "rgba(255,255,255,0.4)",
     overlayOpacity: 0.9,
   },
 
   category: {
-    activeBg: '#FFF5F0',
-    inactiveBg: '#f5f5f5',
+    activeBg: "#FFF5F0",
+    inactiveBg: "#f5f5f5",
   },
 
   ranking: {
-    badgeBg: '#FFF5F0',
-    badgeText: '#FF6B35',
+    badgeBg: "#FFF5F0",
+    badgeText: "#FF6B35",
   },
 
   opacity: {
@@ -100,7 +100,7 @@ export const SIZES = {
     activeElevation: 5,
     borderWidth: 2,
     transformScale: 1.02,
-    activeShadowOffset: {width: 0, height: 10},
+    activeShadowOffset: { width: 0, height: 10 },
   },
   badge: {
     radius: 6,
@@ -143,21 +143,21 @@ export const SIZES = {
 // 阴影配置
 export const SHADOWS = {
   hero: {
-    shadowColor: '#FF6B35',
+    shadowColor: "#FF6B35",
     shadowOffset: { width: 0, height: 20 } as const,
     shadowOpacity: 0.15,
     shadowRadius: 40,
     elevation: 10,
   },
   card: {
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 } as const,
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   button: {
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 } as const,
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -178,12 +178,12 @@ export const CAROUSEL_CONFIG = {
 
 // 分类图标映射
 export const CATEGORY_ICONS: Record<number, string> = {
-  1: 'menu-book',      // 经典文学
-  2: 'explore',        // 悬疑推理
-  3: 'work',           // 职场成长
-  4: 'favorite',       // 情感治愈
-  5: 'history',        // 历史传奇
-  6: 'rocket',         // 科幻未来
+  1: "menu-book", // 经典文学
+  2: "explore", // 悬疑推理
+  3: "work", // 职场成长
+  4: "favorite", // 情感治愈
+  5: "history", // 历史传奇
+  6: "rocket", // 科幻未来
 } as const;
 
 // 导出类型

@@ -25,19 +25,19 @@ export interface Book {
   title: string;
   author: string;
   description?: string;
-  cover_url?: string;      // 后端格式
-  coverUrl?: string;       // 前端格式
+  cover_url?: string; // 后端格式
+  coverUrl?: string; // 前端格式
   audio_url?: string;
   audioUrl?: string;
-  duration?: number;       // 可选：总时长（秒）
-  play_count?: number;     // 后端格式
-  playCount?: string;      // 前端格式：显示用
+  duration?: number; // 可选：总时长（秒）
+  play_count?: number; // 后端格式
+  playCount?: string; // 前端格式：显示用
   category_id?: number;
-  category?: string;       // 前端格式：分类名称
+  category?: string; // 前端格式：分类名称
   episodes?: Episode[];
   created_at: string;
   updated_at: string;
-  rank?: number;           // 排行榜位置
+  rank?: number; // 排行榜位置
 }
 
 export interface Episode {
@@ -128,9 +128,9 @@ export type TabParamList = {
 
 // 统计信息接口（用于 HeroCarousel 等组件）
 export interface BookStats {
-  playCount: string;      // 显示格式：'1.2k'
-  remainingTime: string;  // 显示格式：'45m left'
-  actualPlayCount?: number;  // 实际数值
+  playCount: string; // 显示格式：'1.2k'
+  remainingTime: string; // 显示格式：'45m left'
+  actualPlayCount?: number; // 实际数值
   actualRemainingTime?: number; // 实际秒数
 }
 

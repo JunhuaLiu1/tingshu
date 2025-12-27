@@ -1,49 +1,58 @@
-import React, {useState, useCallback} from 'react';
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native';
-import {MaterialIcons} from '@expo/vector-icons';
-import {CATEGORIES} from '../data/mockData';
-import {Category} from '../types';
+} from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { CATEGORIES } from "../data/mockData";
+import { Category } from "../types";
 import {
   COLORS,
   SPACING,
   SIZES,
   CATEGORY_ICONS,
   SHADOWS,
-} from '../constants/design-tokens';
+} from "../constants/design-tokens";
 
 const CategoryTabs: React.FC = () => {
   const [activeId, setActiveId] = useState<number>(CATEGORIES[0].id);
 
   // 使用正确的类型
-  const renderCategoryItem = useCallback((category: Category) => {
-    const isActive = category.id === activeId;
-    const iconName = CATEGORY_ICONS[category.id] || 'category';
+  const renderCategoryItem = useCallback(
+    (category: Category) => {
+      const isActive = category.id === activeId;
+      const iconName = CATEGORY_ICONS[category.id] || "category";
 
-    return (
-      <TouchableOpacity
-        key={category.id}
-        style={[styles.categoryTab, isActive && styles.activeTab]}
-        onPress={() => setActiveId(category.id)}
-        activeOpacity={COLORS.opacity?.active || 0.8}>
-        <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
-          <MaterialIcons
-            name={iconName as any}
-            size={SIZES.icon.medium}
-            color={isActive ? COLORS.primary : COLORS.text.tertiary}
-          />
-        </View>
-        <Text style={[styles.categoryText, isActive && styles.activeText]}>
-          {category.name}
-        </Text>
-      </TouchableOpacity>
-    );
-  }, [activeId]);
+      return (
+        <TouchableOpacity
+          key={category.id}
+          style={[styles.categoryTab, isActive && styles.activeTab]}
+          onPress={() => setActiveId(category.id)}
+          activeOpacity={COLORS.opacity?.active || 0.8}
+        >
+          <View
+            style={[
+              styles.iconContainer,
+              isActive && styles.activeIconContainer,
+            ]}
+          >
+            <MaterialIcons
+              name={iconName as any}
+              size={SIZES.icon.medium}
+              color={isActive ? COLORS.primary : COLORS.text.tertiary}
+            />
+          </View>
+          <Text style={[styles.categoryText, isActive && styles.activeText]}>
+            {category.name}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [activeId],
+  );
 
   return (
     <View style={styles.container}>
@@ -51,7 +60,8 @@ const CategoryTabs: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}>
+        contentContainerStyle={styles.scrollContainer}
+      >
         {CATEGORIES.slice(0, 3).map(renderCategoryItem)}
       </ScrollView>
     </View>
@@ -65,7 +75,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: SIZES.typography.h3,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text.primary,
     marginBottom: SPACING.md,
   },
@@ -73,8 +83,8 @@ const styles = StyleSheet.create({
     paddingRight: SPACING.md,
   },
   categoryTab: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: SIZES.category.padding,
     borderRadius: SIZES.category.radius,
     marginRight: SPACING.sm,
@@ -95,15 +105,15 @@ const styles = StyleSheet.create({
     elevation: SIZES.category.activeElevation,
     borderWidth: SIZES.category.borderWidth,
     borderColor: COLORS.border.light,
-    transform: [{scale: SIZES.category.transformScale}],
+    transform: [{ scale: SIZES.category.transformScale }],
   },
   iconContainer: {
     width: SIZES.category.iconSize,
     height: SIZES.category.iconSize,
     borderRadius: SIZES.category.iconRadius,
     backgroundColor: COLORS.category.inactiveBg,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: SPACING.sm,
   },
   activeIconContainer: {
@@ -111,9 +121,9 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: SIZES.typography.small,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text.tertiary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   activeText: {
     color: COLORS.text.primary,

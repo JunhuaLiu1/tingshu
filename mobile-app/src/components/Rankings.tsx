@@ -1,56 +1,48 @@
-import React, {useCallback} from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-} from 'react-native';
-import {MaterialIcons} from '@expo/vector-icons';
-import {RANKING_BOOKS, getBookCoverUrl} from '../data/mockData';
-import {Book} from '../types';
-import {
-  COLORS,
-  SPACING,
-  SIZES,
-  SHADOWS,
-} from '../constants/design-tokens';
+import React, { useCallback } from "react";
+import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { RANKING_BOOKS, getBookCoverUrl } from "../data/mockData";
+import { Book } from "../types";
+import { COLORS, SPACING, SIZES, SHADOWS } from "../constants/design-tokens";
 
 const Rankings: React.FC = () => {
   // 使用正确的类型
-  const renderRankingItem = useCallback(({item}: {item: Book}) => (
-    <TouchableOpacity
-      style={styles.rankingItem}
-      activeOpacity={COLORS.opacity?.active || 0.8}
-    >
-      <View style={styles.bookCoverContainer}>
-        <Image
-          source={{uri: getBookCoverUrl(item)}}
-          style={styles.bookCover}
-        />
-      </View>
-
-      <View style={styles.bookInfo}>
-        <Text style={styles.bookTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.bookAuthor} numberOfLines={1}>
-          {item.author}
-        </Text>
-      </View>
-
-      <View style={styles.rankContainer}>
-        <Text style={styles.rankNumber}>#{item.rank}</Text>
-        <TouchableOpacity style={styles.moreButton}>
-          <MaterialIcons
-            name="more-horiz"
-            size={SIZES.icon.medium}
-            color={COLORS.border.dark}
+  const renderRankingItem = useCallback(
+    ({ item }: { item: Book }) => (
+      <TouchableOpacity
+        style={styles.rankingItem}
+        activeOpacity={COLORS.opacity?.active || 0.8}
+      >
+        <View style={styles.bookCoverContainer}>
+          <Image
+            source={{ uri: getBookCoverUrl(item) }}
+            style={styles.bookCover}
           />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  ), []);
+        </View>
+
+        <View style={styles.bookInfo}>
+          <Text style={styles.bookTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={styles.bookAuthor} numberOfLines={1}>
+            {item.author}
+          </Text>
+        </View>
+
+        <View style={styles.rankContainer}>
+          <Text style={styles.rankNumber}>#{item.rank}</Text>
+          <TouchableOpacity style={styles.moreButton}>
+            <MaterialIcons
+              name="more-horiz"
+              size={SIZES.icon.medium}
+              color={COLORS.border.dark}
+            />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    ),
+    [],
+  );
 
   return (
     <View style={styles.container}>
@@ -64,8 +56,8 @@ const Rankings: React.FC = () => {
       <View style={styles.listContainer}>
         {RANKING_BOOKS.slice(0, 4).map((item, index) => (
           <View key={item.id.toString()}>
-            {renderRankingItem({item})}
-            {index < 3 && <View style={{height: SPACING.sm}} />}
+            {renderRankingItem({ item })}
+            {index < 3 && <View style={{ height: SPACING.sm }} />}
           </View>
         ))}
       </View>
@@ -79,14 +71,14 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.lg,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SPACING.md,
   },
   sectionTitle: {
     fontSize: SIZES.typography.h3,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text.primary,
   },
   seeAllBadge: {
@@ -97,15 +89,15 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: SIZES.typography.small,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.ranking.badgeText,
   },
   listContainer: {
     paddingBottom: SPACING.sm,
   },
   rankingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.surface,
     padding: SPACING.ranking?.padding || 12,
     borderRadius: SIZES.ranking.itemRadius,
@@ -121,13 +113,13 @@ const styles = StyleSheet.create({
     width: SIZES.ranking.coverSize,
     height: SIZES.ranking.coverSize,
     borderRadius: SIZES.ranking.radius,
-    overflow: 'hidden',
+    overflow: "hidden",
     backgroundColor: COLORS.background,
   },
   bookCover: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   bookInfo: {
     flex: 1,
@@ -136,7 +128,7 @@ const styles = StyleSheet.create({
   },
   bookTitle: {
     fontSize: SIZES.typography.caption,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text.primary,
     marginBottom: SPACING.xs,
   },
@@ -145,11 +137,11 @@ const styles = StyleSheet.create({
     color: COLORS.text.tertiary,
   },
   rankContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   rankNumber: {
     fontSize: SIZES.typography.small,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.border.dark,
     marginBottom: SPACING.xs,
   },
