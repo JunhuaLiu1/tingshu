@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -8,21 +8,20 @@ import {
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {CATEGORIES} from '../data/mockData';
-
-// 为每个分类分配图标
-const CATEGORY_ICONS: Record<number, string> = {
-  1: 'menu-book',      // 经典文学
-  2: 'explore',        // 悬疑推理
-  3: 'work',           // 职场成长
-  4: 'favorite',       // 情感治愈
-  5: 'history',        // 历史传奇
-  6: 'rocket',         // 科幻未来
-};
+import {Category} from '../types';
+import {
+  COLORS,
+  SPACING,
+  SIZES,
+  CATEGORY_ICONS,
+  SHADOWS,
+} from '../constants/design-tokens';
 
 const CategoryTabs: React.FC = () => {
   const [activeId, setActiveId] = useState<number>(CATEGORIES[0].id);
 
-  const renderCategoryItem = (category: any) => {
+  // 使用正确的类型
+  const renderCategoryItem = useCallback((category: Category) => {
     const isActive = category.id === activeId;
     const iconName = CATEGORY_ICONS[category.id] || 'category';
 
@@ -31,12 +30,12 @@ const CategoryTabs: React.FC = () => {
         key={category.id}
         style={[styles.categoryTab, isActive && styles.activeTab]}
         onPress={() => setActiveId(category.id)}
-        activeOpacity={0.8}>
+        activeOpacity={COLORS.opacity?.active || 0.8}>
         <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
           <MaterialIcons
-            name={iconName}
-            size={20}
-            color={isActive ? '#FF6B35' : '#999'}
+            name={iconName as any}
+            size={SIZES.icon.medium}
+            color={isActive ? COLORS.primary : COLORS.text.tertiary}
           />
         </View>
         <Text style={[styles.categoryText, isActive && styles.activeText]}>
@@ -44,7 +43,7 @@ const CategoryTabs: React.FC = () => {
         </Text>
       </TouchableOpacity>
     );
-  };
+  }, [activeId]);
 
   return (
     <View style={styles.container}>
@@ -61,63 +60,63 @@ const CategoryTabs: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: SIZES.typography.h3,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
+    color: COLORS.text.primary,
+    marginBottom: SPACING.md,
   },
   scrollContainer: {
-    paddingRight: 16,
+    paddingRight: SPACING.md,
   },
   categoryTab: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 24,
-    marginRight: 12,
-    minWidth: 100,
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
+    padding: SIZES.category.padding,
+    borderRadius: SIZES.category.radius,
+    marginRight: SPACING.sm,
+    minWidth: SIZES.category.minWidth,
+    backgroundColor: COLORS.category.inactiveBg,
+    shadowColor: SHADOWS.card.shadowColor,
+    shadowOffset: SHADOWS.card.shadowOffset,
     shadowOpacity: 0.02,
     shadowRadius: 10,
-    elevation: 2,
+    elevation: SHADOWS.card.elevation,
   },
   activeTab: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
+    backgroundColor: COLORS.surface,
+    shadowColor: SHADOWS.card.shadowColor,
     shadowOffset: {width: 0, height: 10},
     shadowOpacity: 0.05,
     shadowRadius: 20,
     elevation: 5,
     borderWidth: 2,
-    borderColor: '#f0f0f0',
+    borderColor: COLORS.border.light,
     transform: [{scale: 1.02}],
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.category.inactiveBg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   activeIconContainer: {
-    backgroundColor: '#FFF5F0',
+    backgroundColor: COLORS.category.activeBg,
   },
   categoryText: {
-    fontSize: 12,
+    fontSize: SIZES.typography.small,
     fontWeight: '600',
-    color: '#999',
+    color: COLORS.text.tertiary,
     textAlign: 'center',
   },
   activeText: {
-    color: '#333',
+    color: COLORS.text.primary,
   },
 });
 
