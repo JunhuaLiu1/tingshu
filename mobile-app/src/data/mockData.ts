@@ -1,23 +1,29 @@
-import {Book, Category} from '../types';
+import {Book, Category, BookWithStats} from '../types';
 
 // 分类数据
 export const CATEGORIES: Category[] = [
-  {id: 1, name: '经典文学', description: '经典文学作品'},
-  {id: 2, name: '悬疑推理', description: '悬疑推理小说'},
-  {id: 3, name: '职场成长', description: '职场成长类书籍'},
-  {id: 4, name: '情感治愈', description: '情感治愈类书籍'},
-  {id: 5, name: '历史传奇', description: '历史传奇故事'},
-  {id: 6, name: '科幻未来', description: '科幻未来题材'},
+  {id: 1, name: '经典文学', description: '经典文学作品', created_at: '2024-01-01', updated_at: '2024-01-01'},
+  {id: 2, name: '悬疑推理', description: '悬疑推理小说', created_at: '2024-01-01', updated_at: '2024-01-01'},
+  {id: 3, name: '职场成长', description: '职场成长类书籍', created_at: '2024-01-01', updated_at: '2024-01-01'},
+  {id: 4, name: '情感治愈', description: '情感治愈类书籍', created_at: '2024-01-01', updated_at: '2024-01-01'},
+  {id: 5, name: '历史传奇', description: '历史传奇故事', created_at: '2024-01-01', updated_at: '2024-01-01'},
+  {id: 6, name: '科幻未来', description: '科幻未来题材', created_at: '2024-01-01', updated_at: '2024-01-01'},
 ];
 
 // 轮播书籍数据
-export const HERO_BOOKS: Book[] = [
+export const HERO_BOOKS: BookWithStats[] = [
   {
     id: 1,
     title: '百年孤独',
     author: '加西亚·马尔克斯',
     cover_url: 'https://picsum.photos/600/600?random=1',
     description: '魔幻现实主义的巅峰之作，讲述布恩迪亚家族七代人的传奇故事。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
+    stats: {
+      playCount: '1.2k',
+      remainingTime: '45m left',
+    },
   },
   {
     id: 2,
@@ -25,6 +31,12 @@ export const HERO_BOOKS: Book[] = [
     author: '毛姆',
     cover_url: 'https://picsum.photos/600/600?random=2',
     description: '关于梦想与现实、理想与冲突的永恒话题。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
+    stats: {
+      playCount: '2.8k',
+      remainingTime: '38m left',
+    },
   },
   {
     id: 3,
@@ -32,6 +44,12 @@ export const HERO_BOOKS: Book[] = [
     author: '刘慈欣',
     cover_url: 'https://picsum.photos/600/600?random=3',
     description: '中国科幻的巅峰之作，探讨宇宙文明与人类命运。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
+    stats: {
+      playCount: '5.1k',
+      remainingTime: '1h 12m left',
+    },
   },
 ];
 
@@ -45,6 +63,8 @@ export const EDITORS_PICKS: Book[] = [
     play_count: 2300000,
     playCount: '230万播放',
     description: '存在主义文学的经典之作。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
   {
     id: 5,
@@ -54,6 +74,8 @@ export const EDITORS_PICKS: Book[] = [
     play_count: 1850000,
     playCount: '185万播放',
     description: '关于正义与偏见的深刻思考。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
   {
     id: 6,
@@ -63,6 +85,8 @@ export const EDITORS_PICKS: Book[] = [
     play_count: 980000,
     playCount: '98万播放',
     description: '关于自我探索与人生哲学的思考。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
   {
     id: 7,
@@ -72,6 +96,8 @@ export const EDITORS_PICKS: Book[] = [
     play_count: 4100000,
     playCount: '410万播放',
     description: '从认知革命到人工智能的人类发展史。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
 ];
 
@@ -87,6 +113,8 @@ export const RANKING_BOOKS: Book[] = [
     play_count: 9990000,
     playCount: '999万+',
     description: '一个中国农民的苦难与韧性。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
   {
     id: 9,
@@ -98,6 +126,8 @@ export const RANKING_BOOKS: Book[] = [
     play_count: 8500000,
     playCount: '850万',
     description: '用现代语言讲述明朝三百年历史。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
   {
     id: 10,
@@ -109,6 +139,8 @@ export const RANKING_BOOKS: Book[] = [
     play_count: 7200000,
     playCount: '720万',
     description: '一段长达十九年的悬疑爱情故事。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
   {
     id: 11,
@@ -120,6 +152,8 @@ export const RANKING_BOOKS: Book[] = [
     play_count: 5400000,
     playCount: '540万',
     description: '提高逻辑思维和表达能力的方法论。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
   {
     id: 12,
@@ -131,6 +165,8 @@ export const RANKING_BOOKS: Book[] = [
     play_count: 4900000,
     playCount: '490万',
     description: '通过蛤蟆的心理治疗历程，学习心理健康知识。',
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
   },
 ];
 

@@ -94,6 +94,11 @@ export const SIZES = {
   button: {
     play: 40,
   },
+  typography: {
+    h3: 20,
+    caption: 12,
+    small: 12,
+  },
 } as const;
 
 // 阴影配置

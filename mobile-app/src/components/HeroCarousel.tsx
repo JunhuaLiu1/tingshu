@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,15 @@ import {
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {HERO_BOOKS, getBookCoverUrl} from '../data/mockData';
+import {BookWithStats} from '../types';
+import {
+  COLORS,
+  SPACING,
+  SIZES,
+  SHADOWS,
+  CAROUSEL_CONFIG,
+  STATS_CONFIG,
+} from '../constants/design-tokens';
 
 const {width} = Dimensions.get('window');
 
@@ -19,37 +28,32 @@ const HeroCarousel: React.FC = () => {
   const scrollRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // 自动轮播 - 修复依赖数组
   useEffect(() => {
     const timer = setInterval(() => {
       const nextIndex = (currentIndex + 1) % HERO_BOOKS.length;
       setCurrentIndex(nextIndex);
       scrollRef.current?.scrollTo({x: nextIndex * width, animated: true});
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [currentIndex]);
+    }, CAROUSEL_CONFIG.autoScrollInterval);
 
-  const handleMomentumScrollEnd = (event: any) => {
+    return () => clearInterval(timer);
+  }, [currentIndex, HERO_BOOKS.length]);
+
+  const handleMomentumScrollEnd = useCallback((event: any) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(index);
-  };
+  }, []);
 
-  const renderCarouselItem = (book: any, index: number) => (
+  // 使用正确的类型
+  const renderCarouselItem = useCallback((book: BookWithStats, index: number) => (
     <View key={book.id} style={[styles.carouselItem, {width}]}>
-      {/* 票据式卡片 */}
       <View style={styles.ticketCard}>
-        {/* 背景渐变效果 */}
         <View style={styles.backgroundGradient} />
-
-        {/* 装饰圆圈（票据缺口） */}
         <View style={[styles.notch, styles.leftNotch]} />
         <View style={[styles.notch, styles.rightNotch]} />
-
-        {/* 虚线分隔 */}
         <View style={styles.dashedLine} />
 
-        {/* 内容布局 */}
         <View style={styles.cardContent}>
-          {/* 上半部分：书籍信息 */}
           <View style={styles.topSection}>
             <View style={styles.bookInfo}>
               <View style={styles.nowPlayingBadge}>
@@ -61,7 +65,6 @@ const HeroCarousel: React.FC = () => {
               <Text style={styles.bookAuthor}>{book.author}</Text>
             </View>
 
-            {/* 小封面图片 */}
             <View style={styles.smallCoverContainer}>
               <Image
                 source={{uri: getBookCoverUrl(book)}}
@@ -70,31 +73,45 @@ const HeroCarousel: React.FC = () => {
             </View>
           </View>
 
-          {/* 下半部分：控制/统计 */}
           <View style={styles.bottomSection}>
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
-                <MaterialIcons name="headphones" size={14} color="#666" />
-                <Text style={styles.statText}>1.2k</Text>
+                <MaterialIcons
+                  name="headphones"
+                  size={SIZES.icon.small}
+                  color={COLORS.text.secondary}
+                />
+                <Text style={styles.statText}>
+                  {book.stats?.playCount || STATS_CONFIG.carousel.playCount}
+                </Text>
               </View>
               <View style={styles.statItem}>
-                <MaterialIcons name="schedule" size={14} color="#666" />
-                <Text style={styles.statText}>45m left</Text>
+                <MaterialIcons
+                  name="schedule"
+                  size={SIZES.icon.small}
+                  color={COLORS.text.secondary}
+                />
+                <Text style={styles.statText}>
+                  {book.stats?.remainingTime || STATS_CONFIG.carousel.remainingTime}
+                </Text>
               </View>
             </View>
 
             <TouchableOpacity style={styles.playButton}>
-              <MaterialIcons name="play-arrow" size={18} color="white" />
+              <MaterialIcons
+                name="play-arrow"
+                size={SIZES.icon.medium}
+                color={COLORS.text.inverse}
+              />
             </TouchableOpacity>
           </View>
         </View>
       </View>
     </View>
-  );
+  ), []);
 
   return (
     <View style={styles.container}>
-      {/* 轮播容器 */}
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -105,7 +122,6 @@ const HeroCarousel: React.FC = () => {
         {HERO_BOOKS.map((book, index) => renderCarouselItem(book, index))}
       </ScrollView>
 
-      {/* 分页点 */}
       <View style={styles.paginationContainer}>
         {HERO_BOOKS.map((_, idx) => (
           <View
@@ -123,27 +139,27 @@ const HeroCarousel: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
   },
   carouselContainer: {
-    height: 220,
+    height: SIZES.carousel.containerHeight,
   },
   carouselItem: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   ticketCard: {
-    width: width - 32,
-    height: 200,
-    borderRadius: 32,
+    width: width - SPACING.md * 2,
+    height: SIZES.hero.height,
+    borderRadius: SIZES.hero.radius,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#FF6B35',
-    shadowOffset: {width: 0, height: 20},
-    shadowOpacity: 0.15,
-    shadowRadius: 40,
-    elevation: 10,
+    shadowColor: SHADOWS.hero.shadowColor,
+    shadowOffset: SHADOWS.hero.shadowOffset,
+    shadowOpacity: SHADOWS.hero.shadowOpacity,
+    shadowRadius: SHADOWS.hero.shadowRadius,
+    elevation: SHADOWS.hero.elevation,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -151,14 +167,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FDE4D0',
+    backgroundColor: COLORS.heroCard.background,
     opacity: 0.9,
   },
   notch: {
     position: 'absolute',
     width: 24,
     height: 24,
-    backgroundColor: '#F5F6F8',
+    backgroundColor: COLORS.heroCard.notch,
     borderRadius: 12,
     top: '50%',
     marginTop: -12,
@@ -173,8 +189,8 @@ const styles = StyleSheet.create({
   dashedLine: {
     position: 'absolute',
     top: '50%',
-    left: 16,
-    right: 16,
+    left: SPACING.md,
+    right: SPACING.md,
     height: 1,
     borderTopWidth: 2,
     borderTopColor: 'rgba(0,0,0,0.1)',
@@ -184,7 +200,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
-    padding: 24,
+    padding: SIZES.hero.padding,
     justifyContent: 'space-between',
     zIndex: 20,
   },
@@ -196,32 +212,32 @@ const styles = StyleSheet.create({
   },
   bookInfo: {
     flex: 1,
-    marginRight: 16,
+    marginRight: SPACING.md,
   },
   nowPlayingBadge: {
     backgroundColor: 'rgba(255,255,255,0.4)',
-    paddingHorizontal: 8,
+    paddingHorizontal: SPACING.xs,
     paddingVertical: 4,
     borderRadius: 6,
     alignSelf: 'flex-start',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   nowPlayingText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#666',
+    color: COLORS.text.secondary,
     letterSpacing: 1,
   },
   bookTitle: {
-    fontSize: 20,
+    fontSize: SIZES.typography?.h3 || 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text.primary,
     lineHeight: 24,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   bookAuthor: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: SIZES.typography?.caption || 12,
+    color: COLORS.text.secondary,
     fontWeight: '500',
   },
   smallCoverContainer: {
@@ -229,11 +245,11 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: SHADOWS.card.shadowColor,
+    shadowOffset: SHADOWS.card.shadowOffset,
+    shadowOpacity: SHADOWS.card.shadowOpacity,
+    shadowRadius: SHADOWS.card.shadowRadius,
+    elevation: SHADOWS.card.elevation,
   },
   smallCover: {
     width: '100%',
@@ -244,54 +260,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 8,
+    paddingTop: SPACING.sm,
   },
   statsContainer: {
     flexDirection: 'row',
-    spaceBetween: 16,
+    gap: SPACING.md,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: SPACING.md,
   },
   statText: {
-    fontSize: 12,
+    fontSize: SIZES.typography?.small || 12,
     fontWeight: '600',
-    color: '#666',
-    marginLeft: 4,
+    color: COLORS.text.secondary,
+    marginLeft: SPACING.xs,
   },
   playButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#333',
-    borderRadius: 20,
+    width: SIZES.button.play,
+    height: SIZES.button.play,
+    backgroundColor: COLORS.text.primary,
+    borderRadius: SIZES.button.play / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowColor: SHADOWS.button.shadowColor,
+    shadowOffset: SHADOWS.button.shadowOffset,
+    shadowOpacity: SHADOWS.button.shadowOpacity,
+    shadowRadius: SHADOWS.button.shadowRadius,
+    elevation: SHADOWS.button.elevation,
   },
   paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: SPACING.md,
   },
   paginationDot: {
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
+    height: CAROUSEL_CONFIG.paginationDotWidth,
+    borderRadius: CAROUSEL_CONFIG.paginationDotWidth / 2,
+    marginHorizontal: SPACING.xs,
   },
   activeDot: {
-    width: 24,
-    backgroundColor: '#333',
+    width: CAROUSEL_CONFIG.paginationActiveWidth,
+    backgroundColor: COLORS.text.primary,
   },
   inactiveDot: {
-    width: 8,
-    backgroundColor: '#ccc',
+    width: CAROUSEL_CONFIG.paginationDotWidth,
+    backgroundColor: COLORS.border.dark,
   },
 });
 
