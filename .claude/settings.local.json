@@ -23,7 +23,10 @@
       "Skill(superpowers:subagent-driven-development)",
       "Skill(superpowers:subagent-driven-development:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(node:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npx ts-node:*)"
     ],
     "deny": [],
     "ask": []
