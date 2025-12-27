@@ -33,6 +33,7 @@ export const COLORS = {
     light: '#F0F0F0',
     default: '#E0E0E0',
     dark: '#CCCCCC',
+    dashed: 'rgba(0,0,0,0.1)',
   },
 
   // 组件特定颜色
@@ -40,6 +41,7 @@ export const COLORS = {
     background: '#FDE4D0',
     shadow: '#FF6B35',
     notch: '#F5F6F8',
+    badgeOverlay: 'rgba(255,255,255,0.4)',
   },
 
   category: {
@@ -69,6 +71,9 @@ export const SIZES = {
     height: 200,
     padding: 24,
     radius: 32,
+    smallCoverWidth: 64,
+    smallCoverHeight: 80,
+    smallCoverRadius: 8,
   },
   carousel: {
     containerHeight: 220,
@@ -78,10 +83,17 @@ export const SIZES = {
     padding: 16,
     radius: 24,
   },
+  badge: {
+    radius: 6,
+    paddingVertical: 4,
+  },
   ranking: {
     coverSize: 56,
     radius: 14,
     padding: 12,
+  },
+  lineHeight: {
+    h3: 24,
   },
   avatar: {
     size: 80,
@@ -98,6 +110,7 @@ export const SIZES = {
     h3: 20,
     caption: 12,
     small: 12,
+    badge: 10,
   },
 } as const;
 
@@ -133,6 +146,8 @@ export const CAROUSEL_CONFIG = {
   paginationActiveWidth: 24,
   notchSize: 24,
   notchOffset: 12,
+  dashedLineWidth: 2,
+  dashedLineOffset: 1,
 } as const;
 
 // 分类图标映射
