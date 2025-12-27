@@ -92,8 +92,8 @@ const styles = StyleSheet.create({
   seeAllBadge: {
     backgroundColor: COLORS.ranking.badgeBg,
     paddingHorizontal: SPACING.sm,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: SIZES.ranking.badgePaddingVertical,
+    borderRadius: SIZES.ranking.badgeRadius,
   },
   seeAllText: {
     fontSize: SIZES.typography.small,
@@ -108,13 +108,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: SPACING.ranking?.padding || 12,
-    borderRadius: 20,
+    borderRadius: SIZES.ranking.itemRadius,
     shadowColor: SHADOWS.card.shadowColor,
     shadowOffset: SHADOWS.card.shadowOffset,
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
+    shadowOpacity: SIZES.ranking.shadowOpacity,
+    shadowRadius: SIZES.ranking.shadowRadius,
     elevation: SHADOWS.card.elevation,
-    borderWidth: 1,
+    borderWidth: SIZES.ranking.borderWidth,
     borderColor: COLORS.border.light,
   },
   bookCoverContainer: {

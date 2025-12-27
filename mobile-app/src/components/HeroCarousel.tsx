@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: COLORS.heroCard.background,
-    opacity: 0.9,
+    opacity: COLORS.heroCard.overlayOpacity,
   },
   notch: {
     position: 'absolute',
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.typography.badge,
     fontWeight: 'bold',
     color: COLORS.text.secondary,
-    letterSpacing: 1,
+    letterSpacing: SIZES.badge.letterSpacing,
   },
   bookTitle: {
     fontSize: SIZES.typography.h3,
