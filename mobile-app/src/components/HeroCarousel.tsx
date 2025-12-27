@@ -39,10 +39,13 @@ const HeroCarousel: React.FC = () => {
     return () => clearInterval(timer);
   }, [currentIndex, HERO_BOOKS.length]);
 
-  const handleMomentumScrollEnd = useCallback((event: any) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / width);
-    setCurrentIndex(index);
-  }, []);
+  const handleMomentumScrollEnd = useCallback(
+    (event: {nativeEvent: {contentOffset: {x: number}}}) => {
+      const index = Math.round(event.nativeEvent.contentOffset.x / width);
+      setCurrentIndex(index);
+    },
+    [],
+  );
 
   // 使用正确的类型
   const renderCarouselItem = useCallback((book: BookWithStats, index: number) => (
@@ -172,19 +175,19 @@ const styles = StyleSheet.create({
   },
   notch: {
     position: 'absolute',
-    width: 24,
-    height: 24,
+    width: CAROUSEL_CONFIG.notchSize,
+    height: CAROUSEL_CONFIG.notchSize,
     backgroundColor: COLORS.heroCard.notch,
-    borderRadius: 12,
+    borderRadius: CAROUSEL_CONFIG.notchSize / 2,
     top: '50%',
-    marginTop: -12,
+    marginTop: -CAROUSEL_CONFIG.notchOffset,
     zIndex: 20,
   },
   leftNotch: {
-    left: -12,
+    left: -CAROUSEL_CONFIG.notchOffset,
   },
   rightNotch: {
-    right: -12,
+    right: -CAROUSEL_CONFIG.notchOffset,
   },
   dashedLine: {
     position: 'absolute',

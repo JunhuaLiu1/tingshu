@@ -131,6 +131,8 @@ export const CAROUSEL_CONFIG = {
   autoScrollInterval: 6000, // 毫秒
   paginationDotWidth: 8,
   paginationActiveWidth: 24,
+  notchSize: 24,
+  notchOffset: 12,
 } as const;
 
 // 分类图标映射
