@@ -402,3 +402,5 @@ android/app/build/
 android/.gradle/
 backend/bin/
 docs/
+.worktrees/
+.claude/
