@@ -125,3 +125,19 @@ export type TabParamList = {
   History: undefined;
   Profile: undefined;
 };
+
+// 统计信息接口（用于 HeroCarousel 等组件）
+export interface BookStats {
+  playCount: string;      // 显示格式：'1.2k'
+  remainingTime: string;  // 显示格式：'45m left'
+  actualPlayCount?: number;  // 实际数值
+  actualRemainingTime?: number; // 实际秒数
+}
+
+// 扩展 Book 接口以支持统计信息
+export interface BookWithStats extends Book {
+  stats?: BookStats;
+}
+
+// 分类图标映射类型
+export type CategoryIconMap = Record<number, string>;
