@@ -53,6 +53,10 @@ export const COLORS = {
     badgeBg: '#FFF5F0',
     badgeText: '#FF6B35',
   },
+
+  opacity: {
+    active: 0.8,
+  },
 } as const;
 
 // 间距配置
@@ -63,6 +67,9 @@ export const SPACING = {
   lg: 24,
   xl: 32,
   xxl: 40,
+  ranking: {
+    padding: 12,
+  },
 } as const;
 
 // 尺寸配置
@@ -108,7 +115,7 @@ export const SIZES = {
   },
   typography: {
     h3: 20,
-    caption: 12,
+    caption: 14,
     small: 12,
     badge: 10,
   },
