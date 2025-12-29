@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -75,17 +76,8 @@ func getEnv(key, defaultValue string) string {
 
 func getEnvAsInt(name string, defaultValue int) int {
 	valueStr := getEnv(name, "")
-	if value, err := parseInt(valueStr); err == nil {
+	if value, err := strconv.Atoi(valueStr); err == nil {
 		return value
 	}
 	return defaultValue
-}
-
-func parseInt(s string) (int, error) {
-	if s == "" {
-		return 0, nil
-	}
-	// 简单的字符串转整数实现
-	// 实际项目中可以使用 strconv.Atoi
-	return 0, nil
 }

@@ -18,6 +18,7 @@ func getSourceManager() *source.Manager {
 	sourceOnce.Do(func() {
 		sourceManager = source.NewManager()
 		_ = sourceManager.Register(source.NewXimalaya())
+		_ = sourceManager.Register(source.NewKuwo())
 	})
 	return sourceManager
 }

@@ -32,7 +32,9 @@
       "Skill(superpowers:finishing-a-development-branch)",
       "Skill(superpowers:finishing-a-development-branch:*)",
       "Bash(npm test)",
-      "Bash(go:*)"
+      "Bash(go:*)",
+      "Bash(xcrun:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

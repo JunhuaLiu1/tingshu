@@ -115,6 +115,7 @@ func (x *Ximalaya) Search(keyword string, page int) (*SearchResult, error) {
 			Description: pickString(itemMap, "intro", "description", "shortIntro"),
 			Status:      formatStatus(itemMap),
 			SourceID:    x.ID(),
+			PlayCount:   pickInt(itemMap, "playCount", "play_count", "playsCounts", "tracksPlayCount"),
 		}
 		books = append(books, book)
 	}
@@ -231,6 +232,7 @@ func (x *Ximalaya) fetchAlbumSimple(bookID string) (*Book, error) {
 		Description: pickString(data, "intro", "description", "shortIntro"),
 		Status:      formatStatus(data),
 		SourceID:    x.ID(),
+		PlayCount:   pickInt(data, "playCount", "play_count", "playsCounts", "tracksPlayCount"),
 	}
 	return book, nil
 }

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
 import {Book} from '../types';
-import {searchApi} from '../services/api';
+import {sourceApi} from '../services/api';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
 import Button from '../components/common/Button';
@@ -63,6 +63,60 @@ const SearchScreen: React.FC = () => {
     [searchQuery, generateSuggestions]
   );
 
+  const getPlayCount = (item: Book) => {
+    if (typeof item.play_count === 'number') return item.play_count;
+    if (typeof item.playCount === 'string') {
+      const parsed = parseInt(item.playCount, 10);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  const normalizeKey = (value: string) =>
+    value.toLowerCase().replace(/\s+/g, '').trim();
+
+  const mergeBooks = (primary: Book[], secondary: Book[]) => {
+    const priorityMap: Record<string, number> = {
+      ximalaya: 2,
+      kuwo: 1,
+    };
+    const merged = new Map<string, Book>();
+
+    const addBook = (book: Book) => {
+      const title = book.title || '';
+      const author = book.author || '';
+      const normalizedTitle = normalizeKey(title);
+      const normalizedAuthor = normalizeKey(author);
+      if (!normalizedTitle && !normalizedAuthor) return;
+      const key = `${normalizedTitle}::${normalizedAuthor}`;
+
+      const existing = merged.get(key);
+      if (!existing) {
+        merged.set(key, book);
+        return;
+      }
+
+      const existingCount = getPlayCount(existing);
+      const nextCount = getPlayCount(book);
+      if (nextCount > existingCount) {
+        merged.set(key, book);
+        return;
+      }
+      if (nextCount === existingCount) {
+        const existingPriority = priorityMap[existing.source_id || existing.sourceId || ''] || 0;
+        const nextPriority = priorityMap[book.source_id || book.sourceId || ''] || 0;
+        if (nextPriority > existingPriority) {
+          merged.set(key, book);
+        }
+      }
+    };
+
+    primary.forEach(addBook);
+    secondary.forEach(addBook);
+
+    return Array.from(merged.values()).sort((a, b) => getPlayCount(b) - getPlayCount(a));
+  };
+
   // 搜索函数
   const handleSearch = async () => {
     setError(null);
@@ -76,9 +130,21 @@ const SearchScreen: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await searchApi.searchBooks(searchQuery);
-      if (response.code === 200) {
-        setSearchResults(response.data || []);
+      const [ximalayaResponse, kuwoResponse] = await Promise.all([
+        sourceApi.searchSource('ximalaya', searchQuery, 1),
+        sourceApi.searchSource('kuwo', searchQuery, 1),
+      ]);
+
+      if (ximalayaResponse.code === 200 && kuwoResponse.code === 200) {
+        const ximalayaBooks = ximalayaResponse.data?.books || [];
+        const kuwoBooks = kuwoResponse.data?.books || [];
+        setSearchResults(mergeBooks(ximalayaBooks, kuwoBooks));
+      } else if (ximalayaResponse.code === 200) {
+        setSearchResults(ximalayaResponse.data?.books || []);
+      } else if (kuwoResponse.code === 200) {
+        setSearchResults(kuwoResponse.data?.books || []);
+      } else {
+        throw new Error('搜索失败，请稍后重试');
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : '搜索失败，请重试';
@@ -114,10 +180,11 @@ const SearchScreen: React.FC = () => {
       style={styles.resultCard}
       activeOpacity={tokens.opacity.active}
       onPress={() => {
-        const bookId = typeof item.id === 'string' ? parseInt(item.id) : item.id;
+        const bookId = item.id.toString();
+        const sourceId = item.source_id || item.sourceId;
         router.push({
           pathname: '/player',
-          params: { bookId: bookId.toString() }
+          params: { bookId, sourceId }
         });
       }}
     >
@@ -135,7 +202,7 @@ const SearchScreen: React.FC = () => {
         <View style={styles.resultMeta}>
           <MaterialIcons name="play-circle-filled" size={16} color={tokens.colors.primary} />
           <Text style={styles.resultPlayCount}>
-            {(item.play_count / 10000).toFixed(1)}万播放
+            {(getPlayCount(item) / 10000).toFixed(1)}万播放
           </Text>
         </View>
       </View>
@@ -232,7 +299,7 @@ const SearchScreen: React.FC = () => {
           <FlatList
             data={searchResults}
             renderItem={renderSearchResult}
-            keyExtractor={item => item.id.toString()}
+            keyExtractor={item => `${item.source_id || item.sourceId || 'unknown'}-${item.id}`}
             getItemLayout={getItemLayout}
             refreshing={refreshing}
             onRefresh={onRefresh}

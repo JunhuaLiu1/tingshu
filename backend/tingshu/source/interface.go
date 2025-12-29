@@ -32,6 +32,7 @@ type Book struct {
 	Description string `json:"description"`
 	Status      string `json:"status"`
 	SourceID    string `json:"source_id"`
+	PlayCount   int    `json:"play_count"`
 }
 
 type BookDetail struct {

@@ -81,6 +81,21 @@ export const searchApi = {
     apiClient.get(`/search?q=${encodeURIComponent(keyword)}`).then(res => res.data),
 };
 
+// 音源 API
+export const sourceApi = {
+  // 搜索指定音源
+  searchSource: (sourceId: string, keyword: string, page: number = 1): Promise<ApiResponse<SearchResult>> =>
+    apiClient.get(`/sources/${sourceId}/search?q=${encodeURIComponent(keyword)}&page=${page}`).then(res => res.data),
+
+  // 获取音源书籍详情
+  getSourceBookDetail: (sourceId: string, bookId: string): Promise<ApiResponse<Book>> =>
+    apiClient.get(`/sources/${sourceId}/books/${encodeURIComponent(bookId)}`).then(res => res.data),
+
+  // 获取音频地址
+  getSourceAudio: (sourceId: string, episodeId: string): Promise<ApiResponse<{audio_url: string}>> =>
+    apiClient.get(`/sources/${sourceId}/audio/${encodeURIComponent(episodeId)}`).then(res => res.data),
+};
+
 // 用户 API（预留）
 export const userApi = {
   // 获取用户档案

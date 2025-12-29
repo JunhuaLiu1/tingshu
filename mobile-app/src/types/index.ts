@@ -32,6 +32,8 @@ export interface Book {
   duration?: number; // 可选：总时长（秒）
   play_count?: number; // 后端格式
   playCount?: string; // 前端格式：显示用
+  source_id?: string; // 后端格式
+  sourceId?: string; // 前端格式
   category_id?: number;
   category?: string; // 前端格式：分类名称
   episodes?: Episode[];
@@ -103,7 +105,9 @@ export interface PlayerState {
 // 搜索结果类型
 export interface SearchResult {
   books: Book[];
-  total: number;
+  total?: number;
+  total_page?: number;
+  current_page?: number;
 }
 
 // 导航类型
