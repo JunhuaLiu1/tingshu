@@ -38,6 +38,12 @@ func SetupRoutes() *gin.Engine {
 
 		// 搜索
 		v1Group.GET("/search", v1.SearchBooks)
+
+		// 音源
+		v1Group.GET("/sources", v1.GetSources)
+		v1Group.GET("/sources/:id/search", v1.SearchSource)
+		v1Group.GET("/sources/:id/books/:bookId", v1.GetSourceBookDetail)
+		v1Group.GET("/sources/:id/audio/:episodeId", v1.GetSourceAudio)
 	}
 
 	return router

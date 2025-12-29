@@ -26,7 +26,13 @@
       "Bash(git commit:*)",
       "Bash(node:*)",
       "Bash(npx expo install:*)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "Skill(superpowers:finishing-a-development-branch)",
+      "Skill(superpowers:finishing-a-development-branch:*)",
+      "Bash(npm test)",
+      "Bash(go:*)"
     ],
     "deny": [],
     "ask": []
