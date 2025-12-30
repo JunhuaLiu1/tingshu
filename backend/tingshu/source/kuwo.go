@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const kuwoBaseURL = "http://baby.kuwo.cn"
+const kuwoBaseURL = "https://tingshu.kuwo.cn"
 
 type Kuwo struct {
 	client *http.Client
@@ -67,22 +67,24 @@ func (k *Kuwo) Search(keyword string, page int) (*SearchResult, error) {
 
 	books := make([]Book, 0, len(resp.Data.Data))
 	for _, item := range resp.Data.Data {
+		songTotal := atoiDefault(item.SongTotal)
 		book := Book{
-			ID:          strconv.Itoa(item.AlbumID),
+			ID:          strings.TrimSpace(item.AlbumID),
 			Title:       strings.TrimSpace(item.AlbumName),
 			Author:      strings.TrimSpace(item.ArtistName),
 			CoverURL:    strings.TrimSpace(item.CoverImg),
 			Description: strings.TrimSpace(item.Title),
-			Status:      fmt.Sprintf("共 %d 集", item.SongTotal),
+			Status:      fmt.Sprintf("共 %d 集", songTotal),
 			SourceID:    k.ID(),
-			PlayCount:   item.ListenCount,
+			PlayCount:   atoiDefault(item.PlayCount),
 		}
 		books = append(books, book)
 	}
 
 	totalPage := 0
-	if resp.Data.Total > 0 {
-		totalPage = (resp.Data.Total + 9) / 10
+	total := atoiDefault(resp.Data.Total)
+	if total > 0 {
+		totalPage = (total + 9) / 10
 	}
 
 	return &SearchResult{
@@ -106,6 +108,9 @@ func (k *Kuwo) GetBookDetail(bookID string) (*BookDetail, error) {
 	var resp kuwoAlbumResponse
 	if err := json.Unmarshal(payload, &resp); err != nil {
 		return nil, err
+	}
+	if resp.Code != 200 {
+		return nil, errors.New("获取章节失败")
 	}
 
 	episodes := make([]Episode, 0, len(resp.Data))
@@ -170,23 +175,36 @@ func (k *Kuwo) doGet(endpoint string) ([]byte, error) {
 
 type kuwoSearchResponse struct {
 	Data struct {
-		Total int `json:"total"`
+		Total string `json:"total"`
 		Data  []struct {
-			AlbumID     int    `json:"albumId"`
-			AlbumName   string `json:"albumName"`
-			CoverImg    string `json:"coverImg"`
-			ArtistName  string `json:"artistName"`
-			SongTotal   int    `json:"songTotal"`
-			Title       string `json:"title"`
-			ListenCount int    `json:"listenCount"`
+			AlbumID    string `json:"albumId"`
+			AlbumName  string `json:"albumName"`
+			CoverImg   string `json:"coverImg"`
+			ArtistName string `json:"artistName"`
+			SongTotal  string `json:"songTotal"`
+			Title      string `json:"title"`
+			PlayCount  string `json:"playCnt"`
 		} `json:"data"`
 	} `json:"data"`
 }
 
 type kuwoAlbumResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
 	Data []struct {
 		Name     string `json:"name"`
 		MusicRID string `json:"musicrid"`
 		Duration int    `json:"duration"`
 	} `json:"data"`
+}
+
+func atoiDefault(value string) int {
+	if value == "" {
+		return 0
+	}
+	num, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return num
 }

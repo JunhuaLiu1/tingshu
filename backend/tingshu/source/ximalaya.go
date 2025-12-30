@@ -77,7 +77,11 @@ func (x *Ximalaya) Search(keyword string, page int) (*SearchResult, error) {
 		return nil, errors.New("invalid search response")
 	}
 	if reason, ok := data["reason"].(string); ok && reason != "" {
-		return nil, errors.New("search blocked by risk control")
+		return &SearchResult{
+			Books:       []Book{},
+			TotalPage:   0,
+			CurrentPage: page,
+		}, nil
 	}
 
 	albumBlock, ok := data["album"].(map[string]interface{})
@@ -174,31 +178,25 @@ func (x *Ximalaya) GetAudioURL(episodeID string) (string, error) {
 		return cached, nil
 	}
 
-	timestamp := time.Now().UnixMilli()
-	endpoint := fmt.Sprintf("%s/mobile-playpage/track/v3/baseInfo/%d?device=www2&trackId=%s&trackQualityLevel=2", x.baseURL, timestamp, url.QueryEscape(episodeID))
-	payload, err := x.doGet(endpoint)
-	if err != nil {
-		return "", err
-	}
-	root, err := decodeJSON(payload)
-	if err != nil {
-		return "", err
-	}
-	if err := checkXimalayaRet(root); err != nil {
-		return "", err
-	}
-	data, ok := root["data"].(map[string]interface{})
-	if !ok {
-		return "", errors.New("invalid audio response")
+	qualities := []int{2, 1, 0}
+	var lastErr error
+	for _, quality := range qualities {
+		audioURL, err := x.fetchAudioURL(episodeID, quality)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if audioURL == "" {
+			continue
+		}
+		x.audioCache.Set(episodeID, audioURL, 10*time.Minute)
+		return audioURL, nil
 	}
 
-	audioURL := pickAudioURL(data)
-	if audioURL == "" {
-		return "", errors.New("audio url not found")
+	if lastErr != nil {
+		return "", lastErr
 	}
-
-	x.audioCache.Set(episodeID, audioURL, 10*time.Minute)
-	return audioURL, nil
+	return "", errors.New("audio url not found")
 }
 
 func (x *Ximalaya) fetchAlbumSimple(bookID string) (*Book, error) {
@@ -278,8 +276,12 @@ func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
 				Title:    pickString(trackMap, "title", "trackTitle"),
 				Duration: pickInt(trackMap, "duration"),
 				IsFree:   !pickBool(trackMap, "isPaid", "is_paid"),
+				AudioURL: pickTrackAudioURL(trackMap),
 			}
 			if episode.ID == "" {
+				continue
+			}
+			if !episode.IsFree {
 				continue
 			}
 			episodes = append(episodes, episode)
@@ -296,6 +298,32 @@ func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
 	}
 
 	return episodes, nil
+}
+
+func (x *Ximalaya) fetchAudioURL(episodeID string, quality int) (string, error) {
+	timestamp := time.Now().UnixMilli()
+	endpoint := fmt.Sprintf("%s/mobile-playpage/track/v3/baseInfo/%d?device=www2&trackId=%s&trackQualityLevel=%d", x.baseURL, timestamp, url.QueryEscape(episodeID), quality)
+	payload, err := x.doGet(endpoint)
+	if err != nil {
+		return "", err
+	}
+	root, err := decodeJSON(payload)
+	if err != nil {
+		return "", err
+	}
+	if err := checkXimalayaRet(root); err != nil {
+		return "", err
+	}
+	data, ok := root["data"].(map[string]interface{})
+	if !ok {
+		return "", errors.New("invalid audio response")
+	}
+
+	if pickBool(data, "isPaid", "is_paid") {
+		return "", errors.New("该内容需要授权")
+	}
+
+	return pickAudioURL(data), nil
 }
 
 func (x *Ximalaya) doGet(endpoint string) ([]byte, error) {
@@ -492,6 +520,24 @@ func pickAudioURL(data map[string]interface{}) string {
 		if url := pickString(info, "url", "playUrl", "playUrl64"); url != "" {
 			return url
 		}
+	}
+	if url := pickString(data, "url", "playUrl", "playUrl64", "playUrl32", "src", "audioUrl", "audio_url"); url != "" {
+		return url
+	}
+	return ""
+}
+
+func pickTrackAudioURL(data map[string]interface{}) string {
+	if url := pickString(
+		data,
+		"playUrl64",
+		"playUrl32",
+		"playPathAacv224",
+		"playPathAacv164",
+		"src",
+		"playUrl",
+	); url != "" {
+		return url
 	}
 	return ""
 }

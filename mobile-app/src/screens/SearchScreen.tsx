@@ -7,7 +7,6 @@ import {
   FlatList,
   TouchableOpacity,
   SafeAreaView,
-  Keyboard,
   InteractionManager,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
@@ -20,11 +19,66 @@ import EmptyState from '../components/common/EmptyState';
 import CachedImage from '../components/common/CachedImage';
 import Loading from '../components/common/Loading';
 import { useToast } from '../contexts/ToastContext';
-import { useSearchState, SearchSuggestion } from '../hooks/useSearchState';
+import { useSearchState } from '../hooks/useSearchState';
 import SearchSuggestions from '../components/SearchSuggestions';
 import { router } from 'expo-router';
 
 const ITEM_HEIGHT = 140;
+
+const SOURCE_PRIORITY: Record<string, number> = {
+  ximalaya: 2,
+  kuwo: 1,
+};
+
+const normalizeKey = (value: string) =>
+  value.toLowerCase().replace(/\s+/g, '').trim();
+
+const getPlayCount = (item: Book) => {
+  if (typeof item.play_count === 'number') return item.play_count;
+  if (typeof item.playCount === 'string') {
+    const parsed = parseInt(item.playCount, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
+const mergeBooks = (primary: Book[], secondary: Book[]) => {
+  const merged = new Map<string, Book>();
+
+  const addBook = (book: Book) => {
+    const title = book.title || '';
+    const author = book.author || '';
+    const normalizedTitle = normalizeKey(title);
+    const normalizedAuthor = normalizeKey(author);
+    if (!normalizedTitle && !normalizedAuthor) return;
+    const key = `${normalizedTitle}::${normalizedAuthor}`;
+
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, book);
+      return;
+    }
+
+    const existingCount = getPlayCount(existing);
+    const nextCount = getPlayCount(book);
+    if (nextCount > existingCount) {
+      merged.set(key, book);
+      return;
+    }
+    if (nextCount === existingCount) {
+      const existingPriority = SOURCE_PRIORITY[existing.source_id || existing.sourceId || ''] || 0;
+      const nextPriority = SOURCE_PRIORITY[book.source_id || book.sourceId || ''] || 0;
+      if (nextPriority > existingPriority) {
+        merged.set(key, book);
+      }
+    }
+  };
+
+  primary.forEach(addBook);
+  secondary.forEach(addBook);
+
+  return Array.from(merged.values()).sort((a, b) => getPlayCount(b) - getPlayCount(a));
+};
 
 const SearchScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,13 +91,9 @@ const SearchScreen: React.FC = () => {
   const { showToast } = useToast();
 
   const {
-    searchHistory,
-    hotSearches,
-    suggestions,
-    isLoadingHistory,
     saveSearchHistory,
     clearSearchHistory,
-    generateSuggestions
+    generateSuggestions,
   } = useSearchState();
 
   // 自动聚焦优化
@@ -63,62 +113,8 @@ const SearchScreen: React.FC = () => {
     [searchQuery, generateSuggestions]
   );
 
-  const getPlayCount = (item: Book) => {
-    if (typeof item.play_count === 'number') return item.play_count;
-    if (typeof item.playCount === 'string') {
-      const parsed = parseInt(item.playCount, 10);
-      return Number.isNaN(parsed) ? 0 : parsed;
-    }
-    return 0;
-  };
-
-  const normalizeKey = (value: string) =>
-    value.toLowerCase().replace(/\s+/g, '').trim();
-
-  const mergeBooks = (primary: Book[], secondary: Book[]) => {
-    const priorityMap: Record<string, number> = {
-      ximalaya: 2,
-      kuwo: 1,
-    };
-    const merged = new Map<string, Book>();
-
-    const addBook = (book: Book) => {
-      const title = book.title || '';
-      const author = book.author || '';
-      const normalizedTitle = normalizeKey(title);
-      const normalizedAuthor = normalizeKey(author);
-      if (!normalizedTitle && !normalizedAuthor) return;
-      const key = `${normalizedTitle}::${normalizedAuthor}`;
-
-      const existing = merged.get(key);
-      if (!existing) {
-        merged.set(key, book);
-        return;
-      }
-
-      const existingCount = getPlayCount(existing);
-      const nextCount = getPlayCount(book);
-      if (nextCount > existingCount) {
-        merged.set(key, book);
-        return;
-      }
-      if (nextCount === existingCount) {
-        const existingPriority = priorityMap[existing.source_id || existing.sourceId || ''] || 0;
-        const nextPriority = priorityMap[book.source_id || book.sourceId || ''] || 0;
-        if (nextPriority > existingPriority) {
-          merged.set(key, book);
-        }
-      }
-    };
-
-    primary.forEach(addBook);
-    secondary.forEach(addBook);
-
-    return Array.from(merged.values()).sort((a, b) => getPlayCount(b) - getPlayCount(a));
-  };
-
   // 搜索函数
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     setError(null);
 
     if (!searchQuery.trim()) {
@@ -130,19 +126,27 @@ const SearchScreen: React.FC = () => {
     setLoading(true);
 
     try {
-      const [ximalayaResponse, kuwoResponse] = await Promise.all([
+      const responses = await Promise.allSettled([
         sourceApi.searchSource('ximalaya', searchQuery, 1),
         sourceApi.searchSource('kuwo', searchQuery, 1),
       ]);
 
-      if (ximalayaResponse.code === 200 && kuwoResponse.code === 200) {
-        const ximalayaBooks = ximalayaResponse.data?.books || [];
-        const kuwoBooks = kuwoResponse.data?.books || [];
+      const [ximalayaResult, kuwoResult] = responses;
+      const ximalayaBooks =
+        ximalayaResult.status === 'fulfilled' && ximalayaResult.value.code === 200
+          ? ximalayaResult.value.data?.books || []
+          : [];
+      const kuwoBooks =
+        kuwoResult.status === 'fulfilled' && kuwoResult.value.code === 200
+          ? kuwoResult.value.data?.books || []
+          : [];
+
+      if (ximalayaBooks.length > 0 || kuwoBooks.length > 0) {
         setSearchResults(mergeBooks(ximalayaBooks, kuwoBooks));
-      } else if (ximalayaResponse.code === 200) {
-        setSearchResults(ximalayaResponse.data?.books || []);
-      } else if (kuwoResponse.code === 200) {
-        setSearchResults(kuwoResponse.data?.books || []);
+      } else if (ximalayaResult.status === 'fulfilled' && ximalayaResult.value.code === 200) {
+        setSearchResults(ximalayaBooks);
+      } else if (kuwoResult.status === 'fulfilled' && kuwoResult.value.code === 200) {
+        setSearchResults(kuwoBooks);
       } else {
         throw new Error('搜索失败，请稍后重试');
       }
@@ -153,7 +157,7 @@ const SearchScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, saveSearchHistory, showToast]);
 
   // 下拉刷新
   const onRefresh = useCallback(async () => {
@@ -182,13 +186,20 @@ const SearchScreen: React.FC = () => {
       onPress={() => {
         const bookId = item.id.toString();
         const sourceId = item.source_id || item.sourceId;
+        const coverUrl = item.cover_url || item.coverUrl || '';
         router.push({
           pathname: '/player',
-          params: { bookId, sourceId }
+          params: {
+            bookId,
+            sourceId,
+            title: item.title || '',
+            author: item.author || '',
+            coverUrl,
+          }
         });
       }}
     >
-      <CachedImage source={{uri: item.cover_url}} style={styles.resultCover} />
+      <CachedImage source={{uri: item.cover_url || item.coverUrl}} style={styles.resultCover} />
       <View style={styles.resultInfo}>
         <Text style={styles.resultTitle} numberOfLines={2}>
           {item.title}

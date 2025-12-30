@@ -45,4 +45,5 @@ type Episode struct {
 	Title    string `json:"title"`
 	Duration int    `json:"duration"`
 	IsFree   bool   `json:"is_free"`
+	AudioURL string `json:"audio_url,omitempty"`
 }

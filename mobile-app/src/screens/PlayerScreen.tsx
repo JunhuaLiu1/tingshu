@@ -33,9 +33,18 @@ type EpisodeItem = {
 };
 
 const PlayerScreen: React.FC = () => {
-  const params = useLocalSearchParams<{bookId?: string; sourceId?: string}>();
+  const params = useLocalSearchParams<{
+    bookId?: string;
+    sourceId?: string;
+    title?: string;
+    author?: string;
+    coverUrl?: string;
+  }>();
   const bookId = typeof params.bookId === 'string' ? params.bookId : '';
   const sourceId = typeof params.sourceId === 'string' ? params.sourceId : '';
+  const fallbackTitle = typeof params.title === 'string' ? params.title : '';
+  const fallbackAuthor = typeof params.author === 'string' ? params.author : '';
+  const fallbackCoverUrl = typeof params.coverUrl === 'string' ? params.coverUrl : '';
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -78,6 +87,8 @@ const PlayerScreen: React.FC = () => {
             if (list.length > 0) {
               setCurrentEpisode(list[0]);
               setDuration(list[0].duration);
+            } else {
+              showToast({ type: 'warning', message: '暂无可播放章节' });
             }
           }
         } else {
@@ -105,6 +116,8 @@ const PlayerScreen: React.FC = () => {
             if (list.length > 0) {
               setCurrentEpisode(list[0]);
               setDuration(list[0].duration);
+            } else {
+              showToast({ type: 'warning', message: '暂无可播放章节' });
             }
           }
         }
@@ -120,6 +133,10 @@ const PlayerScreen: React.FC = () => {
   }, [bookId, sourceId, showToast]);
 
   const loadAudioUrl = async (episode: EpisodeItem) => {
+    if (episode.is_free === false) {
+      showToast({ type: 'warning', message: '该章节需要授权，暂不支持播放' });
+      return '';
+    }
     if (episode.audio_url) {
       setAudioUrl(episode.audio_url);
       return episode.audio_url;
@@ -233,7 +250,10 @@ const PlayerScreen: React.FC = () => {
     setAudioUrl('');
     if (isPlaying) {
       setIsPlaying(false);
-      await loadAudioUrl(episode);
+      const url = await loadAudioUrl(episode);
+      if (!url) {
+        return;
+      }
       setIsPlaying(true);
     }
     showToast({ 
@@ -260,6 +280,11 @@ const PlayerScreen: React.FC = () => {
     return width * 0.75;
   };
 
+  const displayTitle = book?.title || fallbackTitle || '未知书名';
+  const displayAuthor = book?.author || fallbackAuthor || '未知作者';
+  const displayCoverUrl =
+    book?.cover_url || book?.coverUrl || fallbackCoverUrl || 'https://picsum.photos/600/600?random=1';
+
   return (
     <SafeAreaView style={layoutStyles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -269,12 +294,12 @@ const PlayerScreen: React.FC = () => {
         {/* 封面区域 */}
         <View style={styles.coverContainer}>
           <CachedImage
-            source={{uri: book?.cover_url || book?.coverUrl || 'https://picsum.photos/600/600?random=1'}}
+            source={{uri: displayCoverUrl}}
             style={[styles.cover, { width: getCoverSize(), height: getCoverSize() }]}
           />
           <View style={styles.coverOverlay}>
-            <Text style={styles.bookTitle}>{book?.title || '未知书名'}</Text>
-            <Text style={styles.bookAuthor}>{book?.author || '未知作者'}</Text>
+            <Text style={styles.bookTitle}>{displayTitle}</Text>
+            <Text style={styles.bookAuthor}>{displayAuthor}</Text>
           </View>
         </View>
 
