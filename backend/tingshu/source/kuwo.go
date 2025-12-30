@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -99,32 +100,15 @@ func (k *Kuwo) GetBookDetail(bookID string) (*BookDetail, error) {
 		return nil, errors.New("book id is empty")
 	}
 
-	endpoint := fmt.Sprintf("%s/tingshu/api/data/album/songs?albumId=%s&online=0", kuwoBaseURL, url.QueryEscape(bookID))
-	payload, err := k.doGet(endpoint)
+	episodes, err := k.fetchAlbumEpisodes(bookID)
 	if err != nil {
-		return nil, err
-	}
-
-	var resp kuwoAlbumResponse
-	if err := json.Unmarshal(payload, &resp); err != nil {
-		return nil, err
-	}
-	if resp.Code != 200 {
-		return nil, errors.New("获取章节失败")
-	}
-
-	episodes := make([]Episode, 0, len(resp.Data))
-	for _, item := range resp.Data {
-		if item.MusicRID == "" {
-			continue
-		}
-		rid := strings.TrimPrefix(item.MusicRID, "MUSIC_")
-		episodes = append(episodes, Episode{
-			ID:       rid,
-			Title:    strings.TrimSpace(item.Name),
-			Duration: item.Duration,
-			IsFree:   true,
-		})
+		return &BookDetail{
+			Book: Book{
+				ID:       bookID,
+				SourceID: k.ID(),
+			},
+			Episodes: []Episode{},
+		}, nil
 	}
 
 	return &BookDetail{
@@ -207,4 +191,51 @@ func atoiDefault(value string) int {
 		return 0
 	}
 	return num
+}
+
+func (k *Kuwo) fetchAlbumEpisodes(bookID string) ([]Episode, error) {
+	endpoints := []string{
+		fmt.Sprintf("%s/tingshu/api/data/album/songs?albumId=%s&online=0", kuwoBaseURL, url.QueryEscape(bookID)),
+		fmt.Sprintf("%s/tingshu/api/data/album/songs?albumId=%s&pn=1&rn=200&online=0", kuwoBaseURL, url.QueryEscape(bookID)),
+		fmt.Sprintf("%s/tingshu/api/album/songs?albumId=%s&pn=1&rn=200", kuwoBaseURL, url.QueryEscape(bookID)),
+		fmt.Sprintf("%s/tingshu/api/album/track?albumId=%s&pn=1&rn=200", kuwoBaseURL, url.QueryEscape(bookID)),
+	}
+
+	for _, endpoint := range endpoints {
+		log.Printf("kuwo: 尝试获取章节 %s", endpoint)
+		payload, err := k.doGet(endpoint)
+		if err != nil {
+			log.Printf("kuwo: 请求失败 %s err=%v", endpoint, err)
+			continue
+		}
+
+		var resp kuwoAlbumResponse
+		if err := json.Unmarshal(payload, &resp); err != nil {
+			log.Printf("kuwo: 解析失败 %s err=%v", endpoint, err)
+			continue
+		}
+		if resp.Code != 200 || len(resp.Data) == 0 {
+			log.Printf("kuwo: 返回异常 %s code=%d msg=%s data_len=%d", endpoint, resp.Code, resp.Msg, len(resp.Data))
+			continue
+		}
+
+		episodes := make([]Episode, 0, len(resp.Data))
+		for _, item := range resp.Data {
+			if item.MusicRID == "" {
+				continue
+			}
+			rid := strings.TrimPrefix(item.MusicRID, "MUSIC_")
+			episodes = append(episodes, Episode{
+				ID:       rid,
+				Title:    strings.TrimSpace(item.Name),
+				Duration: item.Duration,
+				IsFree:   true,
+			})
+		}
+		if len(episodes) > 0 {
+			return episodes, nil
+		}
+	}
+
+	return nil, errors.New("获取章节失败")
 }

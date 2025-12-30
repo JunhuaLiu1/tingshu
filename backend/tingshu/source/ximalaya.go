@@ -58,6 +58,11 @@ func (x *Ximalaya) Search(keyword string, page int) (*SearchResult, error) {
 		page = 1
 	}
 
+	frontResult, err := x.searchViaFront(keyword, page)
+	if err == nil && frontResult != nil {
+		return frontResult, nil
+	}
+
 	endpoint := fmt.Sprintf("%s/revision/search/main?kw=%s&page=%d&spellchecker=true&core=album", x.baseURL, url.QueryEscape(keyword), page)
 	payload, err := x.doGet(endpoint)
 	if err != nil {
@@ -324,6 +329,72 @@ func (x *Ximalaya) fetchAudioURL(episodeID string, quality int) (string, error) 
 	}
 
 	return pickAudioURL(data), nil
+}
+
+func (x *Ximalaya) searchViaFront(keyword string, page int) (*SearchResult, error) {
+	rows := 20
+	endpoint := fmt.Sprintf("https://search.ximalaya.com/front/v1?core=album&kw=%s&page=%d&rows=%d", url.QueryEscape(keyword), page, rows)
+	payload, err := x.doGet(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp ximalayaFrontResponse
+	if err := json.Unmarshal(payload, &resp); err != nil {
+		return nil, err
+	}
+
+	books := make([]Book, 0, len(resp.Response.Docs))
+	for _, doc := range resp.Response.Docs {
+		id := strconv.FormatInt(doc.ID, 10)
+		if id == "0" {
+			continue
+		}
+		status := ""
+		if doc.Tracks > 0 {
+			status = fmt.Sprintf("共 %d 集", doc.Tracks)
+		}
+		books = append(books, Book{
+			ID:          id,
+			Title:       strings.TrimSpace(doc.Title),
+			Author:      strings.TrimSpace(doc.Nickname),
+			Artist:      strings.TrimSpace(doc.Nickname),
+			CoverURL:    strings.TrimSpace(doc.CoverPath),
+			Description: strings.TrimSpace(doc.Intro),
+			Status:      status,
+			SourceID:    x.ID(),
+			PlayCount:   int(doc.Play),
+		})
+	}
+
+	totalPage := resp.Response.TotalPage
+	if totalPage == 0 && resp.Response.NumFound > 0 {
+		totalPage = (resp.Response.NumFound + rows - 1) / rows
+	}
+
+	return &SearchResult{
+		Books:       books,
+		TotalPage:   totalPage,
+		CurrentPage: page,
+	}, nil
+}
+
+type ximalayaFrontResponse struct {
+	Response struct {
+		Docs      []ximalayaFrontDoc `json:"docs"`
+		NumFound  int                `json:"numFound"`
+		TotalPage int                `json:"totalPage"`
+	} `json:"response"`
+}
+
+type ximalayaFrontDoc struct {
+	ID        int64  `json:"id"`
+	Title     string `json:"title"`
+	Nickname  string `json:"nickname"`
+	Play      int64  `json:"play"`
+	Tracks    int    `json:"tracks"`
+	CoverPath string `json:"cover_path"`
+	Intro     string `json:"intro"`
 }
 
 func (x *Ximalaya) doGet(endpoint string) ([]byte, error) {

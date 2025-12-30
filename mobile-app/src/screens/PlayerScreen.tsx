@@ -142,6 +142,7 @@ const PlayerScreen: React.FC = () => {
       return episode.audio_url;
     }
     if (!sourceId) {
+      showToast({ type: 'warning', message: '当前音源不支持播放' });
       return '';
     }
     setLoadingAudio(true);
@@ -151,6 +152,11 @@ const PlayerScreen: React.FC = () => {
         setAudioUrl(response.data.audio_url);
         return response.data.audio_url;
       }
+      showToast({ type: 'error', message: '获取音频失败' });
+      return '';
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '获取音频失败';
+      showToast({ type: 'error', message });
       return '';
     } finally {
       setLoadingAudio(false);
@@ -158,12 +164,14 @@ const PlayerScreen: React.FC = () => {
   };
 
   const togglePlayPause = async () => {
-    if (!currentEpisode) return;
+    if (!currentEpisode) {
+      showToast({ type: 'warning', message: '暂无可播放章节' });
+      return;
+    }
     if (!isPlaying) {
       if (!audioUrl) {
         const url = await loadAudioUrl(currentEpisode);
         if (!url) {
-          showToast({ type: 'error', message: '获取音频失败' });
           return;
         }
       }
@@ -204,6 +212,11 @@ const PlayerScreen: React.FC = () => {
     if (!isSeeking) {
       setCurrentTime(payload.currentTime);
     }
+  };
+
+  const handleAudioError = () => {
+    setIsPlaying(false);
+    showToast({ type: 'error', message: '播放失败，请重试' });
   };
 
   const handleEnd = () => {
@@ -399,6 +412,7 @@ const PlayerScreen: React.FC = () => {
             rate={playbackRate}
             onLoad={handleLoad}
             onProgress={handleProgress}
+            onError={handleAudioError}
             onEnd={handleEnd}
             style={styles.audioPlayer}
           />

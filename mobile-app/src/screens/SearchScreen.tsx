@@ -25,14 +25,6 @@ import { router } from 'expo-router';
 
 const ITEM_HEIGHT = 140;
 
-const SOURCE_PRIORITY: Record<string, number> = {
-  ximalaya: 2,
-  kuwo: 1,
-};
-
-const normalizeKey = (value: string) =>
-  value.toLowerCase().replace(/\s+/g, '').trim();
-
 const getPlayCount = (item: Book) => {
   if (typeof item.play_count === 'number') return item.play_count;
   if (typeof item.playCount === 'string') {
@@ -40,44 +32,6 @@ const getPlayCount = (item: Book) => {
     return Number.isNaN(parsed) ? 0 : parsed;
   }
   return 0;
-};
-
-const mergeBooks = (primary: Book[], secondary: Book[]) => {
-  const merged = new Map<string, Book>();
-
-  const addBook = (book: Book) => {
-    const title = book.title || '';
-    const author = book.author || '';
-    const normalizedTitle = normalizeKey(title);
-    const normalizedAuthor = normalizeKey(author);
-    if (!normalizedTitle && !normalizedAuthor) return;
-    const key = `${normalizedTitle}::${normalizedAuthor}`;
-
-    const existing = merged.get(key);
-    if (!existing) {
-      merged.set(key, book);
-      return;
-    }
-
-    const existingCount = getPlayCount(existing);
-    const nextCount = getPlayCount(book);
-    if (nextCount > existingCount) {
-      merged.set(key, book);
-      return;
-    }
-    if (nextCount === existingCount) {
-      const existingPriority = SOURCE_PRIORITY[existing.source_id || existing.sourceId || ''] || 0;
-      const nextPriority = SOURCE_PRIORITY[book.source_id || book.sourceId || ''] || 0;
-      if (nextPriority > existingPriority) {
-        merged.set(key, book);
-      }
-    }
-  };
-
-  primary.forEach(addBook);
-  secondary.forEach(addBook);
-
-  return Array.from(merged.values()).sort((a, b) => getPlayCount(b) - getPlayCount(a));
 };
 
 const SearchScreen: React.FC = () => {
@@ -126,27 +80,9 @@ const SearchScreen: React.FC = () => {
     setLoading(true);
 
     try {
-      const responses = await Promise.allSettled([
-        sourceApi.searchSource('ximalaya', searchQuery, 1),
-        sourceApi.searchSource('kuwo', searchQuery, 1),
-      ]);
-
-      const [ximalayaResult, kuwoResult] = responses;
-      const ximalayaBooks =
-        ximalayaResult.status === 'fulfilled' && ximalayaResult.value.code === 200
-          ? ximalayaResult.value.data?.books || []
-          : [];
-      const kuwoBooks =
-        kuwoResult.status === 'fulfilled' && kuwoResult.value.code === 200
-          ? kuwoResult.value.data?.books || []
-          : [];
-
-      if (ximalayaBooks.length > 0 || kuwoBooks.length > 0) {
-        setSearchResults(mergeBooks(ximalayaBooks, kuwoBooks));
-      } else if (ximalayaResult.status === 'fulfilled' && ximalayaResult.value.code === 200) {
-        setSearchResults(ximalayaBooks);
-      } else if (kuwoResult.status === 'fulfilled' && kuwoResult.value.code === 200) {
-        setSearchResults(kuwoBooks);
+      const response = await sourceApi.searchSource('ximalaya', searchQuery, 1);
+      if (response.code === 200) {
+        setSearchResults(response.data?.books || []);
       } else {
         throw new Error('搜索失败，请稍后重试');
       }
