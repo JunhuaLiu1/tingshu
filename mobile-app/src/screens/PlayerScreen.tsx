@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import {MaterialIcons} from '@expo/vector-icons';
-import Video from 'react-native-video';
+import { MaterialIcons } from '@expo/vector-icons';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
 import CachedImage from '../components/common/CachedImage';
@@ -20,17 +19,9 @@ import { bookApi, sourceApi } from '../services/api';
 import { Book } from '../types';
 import Loading from '../components/common/Loading';
 import { useLocalSearchParams } from 'expo-router';
+import { useAudioPlayer, Episode } from '../hooks/useAudioPlayer';
 
-const {width} = Dimensions.get('window');
-
-type EpisodeItem = {
-  id: string;
-  title: string;
-  duration: number;
-  episode_num: number;
-  audio_url?: string;
-  is_free?: boolean;
-};
+const { width } = Dimensions.get('window');
 
 const PlayerScreen: React.FC = () => {
   const params = useLocalSearchParams<{
@@ -46,35 +37,38 @@ const PlayerScreen: React.FC = () => {
   const fallbackAuthor = typeof params.author === 'string' ? params.author : '';
   const fallbackCoverUrl = typeof params.coverUrl === 'string' ? params.coverUrl : '';
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [currentEpisode, setCurrentEpisode] = useState<EpisodeItem | null>(null);
-  const [playbackRate, setPlaybackRate] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [book, setBook] = useState<Book | null>(null);
-  const [episodes, setEpisodes] = useState<EpisodeItem[]>([]);
-  const [audioUrl, setAudioUrl] = useState('');
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingAudio, setLoadingAudio] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [seekValue, setSeekValue] = useState(0);
   const { showToast } = useToast();
-  const videoRef = useRef<Video>(null);
+
+  const {
+    state: playbackState,
+    currentEpisode,
+    downloadProgress,
+    loadEpisode,
+    togglePlayPause,
+    seekTo,
+    setPlaybackRate,
+  } = useAudioPlayer({
+    sourceId,
+    bookId,
+    onError: (error) => showToast({ type: 'error', message: error }),
+  });
 
   useEffect(() => {
     const loadDetail = async () => {
       if (!bookId) return;
-      setAudioUrl('');
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setDuration(0);
       setLoading(true);
       try {
         if (sourceId) {
           const response = await sourceApi.getSourceBookDetail(sourceId, bookId);
           if (response.code === 200 && response.data) {
             const detail = response.data as Book;
-            const list = (detail.episodes || []).map((ep, index) => ({
+            const list: Episode[] = (detail.episodes || []).map((ep, index) => ({
               id: ep.id.toString(),
               title: ep.title,
               duration: ep.duration || 0,
@@ -85,8 +79,7 @@ const PlayerScreen: React.FC = () => {
             setBook(detail);
             setEpisodes(list);
             if (list.length > 0) {
-              setCurrentEpisode(list[0]);
-              setDuration(list[0].duration);
+              loadEpisode(list[0]);
             } else {
               showToast({ type: 'warning', message: '暂无可播放章节' });
             }
@@ -105,7 +98,7 @@ const PlayerScreen: React.FC = () => {
             setBook(bookResponse.data);
           }
           if (episodeResponse.code === 200 && episodeResponse.data) {
-            const list = episodeResponse.data.map((ep: any, index: number) => ({
+            const list: Episode[] = episodeResponse.data.map((ep: any, index: number) => ({
               id: ep.id.toString(),
               title: ep.title,
               duration: ep.duration || 0,
@@ -114,115 +107,18 @@ const PlayerScreen: React.FC = () => {
             }));
             setEpisodes(list);
             if (list.length > 0) {
-              setCurrentEpisode(list[0]);
-              setDuration(list[0].duration);
-            } else {
-              showToast({ type: 'warning', message: '暂无可播放章节' });
+              loadEpisode(list[0]);
             }
           }
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : '加载失败，请重试';
-        showToast({ type: 'error', message });
+        showToast({ type: 'error', message: err instanceof Error ? err.message : '加载失败' });
       } finally {
         setLoading(false);
       }
     };
-
     loadDetail();
-  }, [bookId, sourceId, showToast]);
-
-  const loadAudioUrl = async (episode: EpisodeItem) => {
-    if (episode.is_free === false) {
-      showToast({ type: 'warning', message: '该章节需要授权，暂不支持播放' });
-      return '';
-    }
-    if (episode.audio_url) {
-      setAudioUrl(episode.audio_url);
-      return episode.audio_url;
-    }
-    if (!sourceId) {
-      showToast({ type: 'warning', message: '当前音源不支持播放' });
-      return '';
-    }
-    setLoadingAudio(true);
-    try {
-      const response = await sourceApi.getSourceAudio(sourceId, episode.id);
-      if (response.code === 200 && response.data?.audio_url) {
-        setAudioUrl(response.data.audio_url);
-        return response.data.audio_url;
-      }
-      showToast({ type: 'error', message: '获取音频失败' });
-      return '';
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '获取音频失败';
-      showToast({ type: 'error', message });
-      return '';
-    } finally {
-      setLoadingAudio(false);
-    }
-  };
-
-  const togglePlayPause = async () => {
-    if (!currentEpisode) {
-      showToast({ type: 'warning', message: '暂无可播放章节' });
-      return;
-    }
-    if (!isPlaying) {
-      if (!audioUrl) {
-        const url = await loadAudioUrl(currentEpisode);
-        if (!url) {
-          return;
-        }
-      }
-      setIsPlaying(true);
-      showToast({
-        type: 'info',
-        message: '开始播放',
-        duration: 1000
-      });
-      return;
-    }
-    setIsPlaying(false);
-    showToast({
-      type: 'info',
-      message: '已暂停',
-      duration: 1000
-    });
-  };
-
-  const onSliderValueChange = (value: number) => {
-    setIsSeeking(true);
-    setCurrentTime(value);
-  };
-
-  const onSlidingComplete = (value: number) => {
-    setIsSeeking(false);
-    videoRef.current?.seek(value);
-    setCurrentTime(value);
-  };
-
-  const handleLoad = (payload: {duration: number}) => {
-    if (payload.duration) {
-      setDuration(payload.duration);
-    }
-  };
-
-  const handleProgress = (payload: {currentTime: number}) => {
-    if (!isSeeking) {
-      setCurrentTime(payload.currentTime);
-    }
-  };
-
-  const handleAudioError = () => {
-    setIsPlaying(false);
-    showToast({ type: 'error', message: '播放失败，请重试' });
-  };
-
-  const handleEnd = () => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-  };
+  }, [bookId, sourceId]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -230,84 +126,79 @@ const PlayerScreen: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const changePlaybackRate = () => {
-    const rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
-    const currentIndex = rates.indexOf(playbackRate);
-    const nextIndex = (currentIndex + 1) % rates.length;
-    setPlaybackRate(rates[nextIndex]);
-    showToast({ 
-      type: 'info', 
-      message: `播放速度: ${rates[nextIndex]}x`,
-      duration: 1000 
-    });
+  const handleSliderChange = (value: number) => {
+    setIsSeeking(true);
+    setSeekValue(value);
+  };
+
+  const handleSlidingComplete = async (value: number) => {
+    setIsSeeking(false);
+    await seekTo(value);
+  };
+
+  const changePlaybackRate = async () => {
+    const rates = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
+    const currentIndex = rates.indexOf(playbackState.playbackRate);
+    const nextRate = rates[(currentIndex + 1) % rates.length];
+    await setPlaybackRate(nextRate);
+    showToast({ type: 'info', message: `播放速度: ${nextRate}x`, duration: 1000 });
   };
 
   const playPrev = async () => {
     if (!currentEpisode || episodes.length === 0) return;
     const currentIndex = episodes.findIndex(ep => ep.id === currentEpisode.id);
     if (currentIndex <= 0) return;
-    await selectEpisode(episodes[currentIndex - 1]);
+    await loadEpisode(episodes[currentIndex - 1]);
+    showToast({ type: 'success', message: `切换到 ${episodes[currentIndex - 1].title}`, duration: 1500 });
   };
 
   const playNext = async () => {
     if (!currentEpisode || episodes.length === 0) return;
     const currentIndex = episodes.findIndex(ep => ep.id === currentEpisode.id);
     if (currentIndex < 0 || currentIndex >= episodes.length - 1) return;
-    await selectEpisode(episodes[currentIndex + 1]);
+    await loadEpisode(episodes[currentIndex + 1]);
+    showToast({ type: 'success', message: `切换到 ${episodes[currentIndex + 1].title}`, duration: 1500 });
   };
 
-  const selectEpisode = async (episode: EpisodeItem) => {
-    setCurrentEpisode(episode);
-    setDuration(episode.duration);
-    setCurrentTime(0);
-    setAudioUrl('');
-    if (isPlaying) {
-      setIsPlaying(false);
-      const url = await loadAudioUrl(episode);
-      if (!url) {
-        return;
-      }
-      setIsPlaying(true);
-    }
-    showToast({ 
-      type: 'success', 
-      message: `切换到 ${episode.title}`,
-      duration: 1500 
-    });
+  const selectEpisode = async (episode: Episode) => {
+    await loadEpisode(episode);
+    showToast({ type: 'success', message: `切换到 ${episode.title}`, duration: 1500 });
   };
 
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
-    showToast({ 
-      type: 'success', 
-      message: isFavorite ? '已取消收藏' : '已添加收藏' 
-    });
+    showToast({ type: 'success', message: isFavorite ? '已取消收藏' : '已添加收藏' });
   };
 
-  const handleShare = () => {
-    showToast({ type: 'info', message: '分享功能开发中' });
-  };
-
-  const getCoverSize = () => {
-    if (isSmallScreen()) return width * 0.7;
-    return width * 0.75;
-  };
+  const getCoverSize = () => (isSmallScreen() ? width * 0.7 : width * 0.75);
 
   const displayTitle = book?.title || fallbackTitle || '未知书名';
   const displayAuthor = book?.author || fallbackAuthor || '未知作者';
-  const displayCoverUrl =
-    book?.cover_url || book?.coverUrl || fallbackCoverUrl || 'https://picsum.photos/600/600?random=1';
+  const displayCoverUrl = book?.cover_url || book?.coverUrl || fallbackCoverUrl || 'https://picsum.photos/600/600?random=1';
+
+  const isLoading = loading || playbackState.status === 'loading';
+  const isPlaying = playbackState.status === 'playing';
+  const displayTime = isSeeking ? seekValue : playbackState.currentTime;
 
   return (
     <SafeAreaView style={layoutStyles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {(loading || loadingAudio) && (
-          <Loading visible={true} fullScreen={false} />
+        {isLoading && <Loading visible={true} fullScreen={false} />}
+
+        {/* 下载进度 */}
+        {playbackState.status === 'loading' && downloadProgress > 0 && downloadProgress < 1 && (
+          <View style={styles.downloadProgress}>
+            <Text style={styles.downloadText}>缓存中 {Math.round(downloadProgress * 100)}%</Text>
+            <View style={styles.downloadBar}>
+              <View style={[styles.downloadFill, { width: `${downloadProgress * 100}%` }]} />
+            </View>
+          </View>
         )}
+
         {/* 封面区域 */}
         <View style={styles.coverContainer}>
           <CachedImage
-            source={{uri: displayCoverUrl}}
+            source={{ uri: displayCoverUrl }}
             style={[styles.cover, { width: getCoverSize(), height: getCoverSize() }]}
           />
           <View style={styles.coverOverlay}>
@@ -318,105 +209,70 @@ const PlayerScreen: React.FC = () => {
 
         {/* 播放控制 */}
         <View style={styles.controlContainer}>
-          {/* 进度条 */}
           <View style={styles.progressContainer}>
-            <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+            <Text style={styles.timeText}>{formatTime(displayTime)}</Text>
             <Slider
               style={styles.slider}
               minimumValue={0}
-              maximumValue={duration}
-              value={currentTime}
-              onValueChange={onSliderValueChange}
-              onSlidingComplete={onSlidingComplete}
+              maximumValue={playbackState.duration || 1}
+              value={displayTime}
+              onValueChange={handleSliderChange}
+              onSlidingComplete={handleSlidingComplete}
               minimumTrackTintColor={tokens.colors.primary}
               maximumTrackTintColor={tokens.colors.border.default}
               thumbTintColor={tokens.colors.primary}
             />
-            <Text style={styles.timeText}>{formatTime(duration)}</Text>
+            <Text style={styles.timeText}>{formatTime(playbackState.duration)}</Text>
           </View>
 
-          {/* 控制按钮 */}
           <View style={styles.controls}>
-            <TouchableOpacity 
-              style={styles.controlButton}
-              activeOpacity={tokens.opacity.active}
-              onPress={playPrev}
-            >
+            <TouchableOpacity style={styles.controlButton} onPress={playPrev}>
               <MaterialIcons name="skip-previous" size={32} color={tokens.colors.text.primary} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.playButton} 
+            <TouchableOpacity
+              style={styles.playButton}
               onPress={togglePlayPause}
-              activeOpacity={tokens.opacity.active}
+              disabled={playbackState.status === 'loading'}
             >
-              <MaterialIcons
-                name={isPlaying ? 'pause' : 'play-arrow'}
-                size={40}
-                color={tokens.colors.text.inverse}
-              />
+              {playbackState.isBuffering ? (
+                <MaterialIcons name="hourglass-empty" size={40} color={tokens.colors.text.inverse} />
+              ) : (
+                <MaterialIcons
+                  name={isPlaying ? 'pause' : 'play-arrow'}
+                  size={40}
+                  color={tokens.colors.text.inverse}
+                />
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.controlButton}
-              activeOpacity={tokens.opacity.active}
-              onPress={playNext}
-            >
+            <TouchableOpacity style={styles.controlButton} onPress={playNext}>
               <MaterialIcons name="skip-next" size={32} color={tokens.colors.text.primary} />
             </TouchableOpacity>
           </View>
 
-          {/* 额外控制 */}
           <View style={styles.extraControls}>
-            <TouchableOpacity 
-              style={styles.extraControlButton}
-              onPress={toggleFavorite}
-              activeOpacity={tokens.opacity.active}
-            >
-              <MaterialIcons 
-                name={isFavorite ? 'favorite' : 'favorite-border'} 
-                size={24} 
-                color={isFavorite ? tokens.colors.primary : tokens.colors.text.tertiary} 
+            <TouchableOpacity style={styles.extraControlButton} onPress={toggleFavorite}>
+              <MaterialIcons
+                name={isFavorite ? 'favorite' : 'favorite-border'}
+                size={24}
+                color={isFavorite ? tokens.colors.primary : tokens.colors.text.tertiary}
               />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.extraControlButton}
-              onPress={changePlaybackRate}
-              activeOpacity={tokens.opacity.active}
-            >
-              <Text style={styles.playbackRateText}>{playbackRate}x</Text>
+            <TouchableOpacity style={styles.extraControlButton} onPress={changePlaybackRate}>
+              <Text style={styles.playbackRateText}>{playbackState.playbackRate}x</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.extraControlButton}
-              onPress={handleShare}
-              activeOpacity={tokens.opacity.active}
-            >
+            <TouchableOpacity style={styles.extraControlButton} onPress={() => showToast({ type: 'info', message: '分享功能开发中' })}>
               <MaterialIcons name="share" size={24} color={tokens.colors.text.tertiary} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.extraControlButton}
-              activeOpacity={tokens.opacity.active}
-            >
+            <TouchableOpacity style={styles.extraControlButton}>
               <MaterialIcons name="more-horiz" size={24} color={tokens.colors.text.tertiary} />
             </TouchableOpacity>
           </View>
         </View>
-        {audioUrl ? (
-          <Video
-            ref={videoRef}
-            source={{uri: audioUrl}}
-            paused={!isPlaying}
-            rate={playbackRate}
-            onLoad={handleLoad}
-            onProgress={handleProgress}
-            onError={handleAudioError}
-            onEnd={handleEnd}
-            style={styles.audioPlayer}
-          />
-        ) : null}
 
         {/* 当前播放信息 */}
         {currentEpisode && (
@@ -428,16 +284,15 @@ const PlayerScreen: React.FC = () => {
 
         {/* 剧集列表 */}
         <View style={styles.episodesContainer}>
-          <Text style={styles.episodesTitle}>剧集列表</Text>
-          {episodes.map((episode) => (
+          <Text style={styles.episodesTitle}>剧集列表 ({episodes.length})</Text>
+          {episodes.map((episode, index) => (
             <TouchableOpacity
-              key={episode.id}
+              key={`${episode.id}-${episode.episode_num}-${index}`}
               style={[
                 styles.episodeItem,
                 currentEpisode?.id === episode.id && styles.episodeItemActive,
               ]}
               onPress={() => selectEpisode(episode)}
-              activeOpacity={tokens.opacity.active}
             >
               <View style={styles.episodeInfo}>
                 <View
@@ -461,24 +316,18 @@ const PlayerScreen: React.FC = () => {
                       styles.episodeTitle,
                       currentEpisode?.id === episode.id && styles.episodeTitleActive,
                     ]}
+                    numberOfLines={1}
                   >
                     {episode.title}
                   </Text>
-                  <Text style={styles.episodeDuration}>
-                    {formatTime(episode.duration)}
-                  </Text>
+                  <Text style={styles.episodeDuration}>{formatTime(episode.duration)}</Text>
                 </View>
               </View>
-              <TouchableOpacity 
-                style={styles.downloadButton}
-                activeOpacity={tokens.opacity.active}
-              >
-                <MaterialIcons
-                  name="file-download"
-                  size={20}
-                  color={currentEpisode?.id === episode.id ? tokens.colors.primary : tokens.colors.text.tertiary}
-                />
-              </TouchableOpacity>
+              <MaterialIcons
+                name="file-download"
+                size={20}
+                color={currentEpisode?.id === episode.id ? tokens.colors.primary : tokens.colors.text.tertiary}
+              />
             </TouchableOpacity>
           ))}
         </View>
@@ -491,6 +340,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: tokens.colors.background,
+  },
+  downloadProgress: {
+    margin: tokens.spacing.md,
+    padding: tokens.spacing.sm,
+    backgroundColor: tokens.colors.surface,
+    borderRadius: tokens.radius.sm,
+  },
+  downloadText: {
+    fontSize: tokens.typography.small,
+    color: tokens.colors.text.secondary,
+    marginBottom: 4,
+  },
+  downloadBar: {
+    height: 4,
+    backgroundColor: tokens.colors.border.default,
+    borderRadius: 2,
+  },
+  downloadFill: {
+    height: '100%',
+    backgroundColor: tokens.colors.primary,
+    borderRadius: 2,
   },
   coverContainer: {
     position: 'relative',
@@ -652,13 +522,6 @@ const styles = StyleSheet.create({
   episodeDuration: {
     fontSize: tokens.typography.small,
     color: tokens.colors.text.tertiary,
-  },
-  downloadButton: {
-    padding: tokens.spacing.sm,
-  },
-  audioPlayer: {
-    width: 0,
-    height: 0,
   },
 });
 

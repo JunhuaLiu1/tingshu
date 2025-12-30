@@ -96,6 +96,17 @@ export const sourceApi = {
     apiClient.get(`/sources/${sourceId}/audio/${encodeURIComponent(episodeId)}`).then(res => res.data),
 };
 
+// 播放进度 API
+export const playbackApi = {
+  // 保存播放进度
+  saveProgress: (data: { book_id: string; episode_id: string; position: number; duration: number }): Promise<ApiResponse<{saved: boolean}>> =>
+    apiClient.post('/playback/progress', data).then(res => res.data),
+
+  // 获取播放进度
+  getProgress: (bookId: string, episodeId?: string): Promise<ApiResponse<any>> =>
+    apiClient.get(`/playback/progress?book_id=${bookId}${episodeId ? `&episode_id=${episodeId}` : ''}`).then(res => res.data),
+};
+
 // 用户 API（预留）
 export const userApi = {
   // 获取用户档案

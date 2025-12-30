@@ -1,6 +1,7 @@
 package source
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -222,51 +223,85 @@ func (x *Ximalaya) fetchAlbumSimple(bookID string) (*Book, error) {
 	if !ok {
 		return nil, errors.New("invalid album response")
 	}
+
+	// 新版API数据在 albumPageMainInfo 中
+	mainInfo, ok := data["albumPageMainInfo"].(map[string]interface{})
+	if !ok {
+		// 兼容旧版
+		mainInfo = data
+	}
+
 	if reason, ok := data["reason"].(string); ok && reason != "" {
 		return nil, errors.New("album blocked by risk control")
 	}
 
 	book := &Book{
 		ID:          bookID,
-		Title:       pickString(data, "title", "albumTitle", "name"),
-		Author:      pickString(data, "author", "anchorName"),
-		Artist:      pickString(data, "announcer", "artist"),
-		CoverURL:    pickString(data, "cover", "coverPath", "cover_url", "coverUrl", "coverLarge", "coverMiddle", "coverSmall"),
-		Description: pickString(data, "intro", "description", "shortIntro"),
-		Status:      formatStatus(data),
+		Title:       pickString(mainInfo, "albumTitle", "title", "name"),
+		Author:      pickString(mainInfo, "anchorName", "author"),
+		Artist:      pickString(mainInfo, "anchorName", "announcer", "artist"),
+		CoverURL:    fixCoverURL(pickString(mainInfo, "cover", "coverPath", "cover_url", "coverUrl", "coverLarge", "coverMiddle", "coverSmall")),
+		Description: pickString(mainInfo, "shortIntro", "intro", "description"),
+		Status:      formatStatus(mainInfo),
 		SourceID:    x.ID(),
-		PlayCount:   pickInt(data, "playCount", "play_count", "playsCounts", "tracksPlayCount"),
+		PlayCount:   pickInt(mainInfo, "playCount", "play_count", "playsCounts", "tracksPlayCount"),
 	}
 	return book, nil
 }
 
+func fixCoverURL(url string) string {
+	if url == "" {
+		return ""
+	}
+	if strings.HasPrefix(url, "//") {
+		return "https:" + url
+	}
+	return url
+}
+
 func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
-	pageSize := 100
+	pageSize := 50
 	pageNum := 1
 	var episodes []Episode
 
 	for {
-		endpoint := fmt.Sprintf("%s/revision/album/v1/getTracksList?albumId=%s&pageNum=%d&pageSize=%d", x.baseURL, url.QueryEscape(bookID), pageNum, pageSize)
-		payload, err := x.doGet(endpoint)
+		// 使用移动端API，更稳定
+		timestamp := time.Now().UnixMilli()
+		endpoint := fmt.Sprintf("https://mobile.ximalaya.com/mobile-album/album/page/ts-%d?albumId=%s&pageId=%d&pageSize=%d&isAsc=true", timestamp, url.QueryEscape(bookID), pageNum, pageSize)
+		
+		req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, err
 		}
+		req.Header.Set("User-Agent", "okhttp/3.12.1")
+		
+		resp, err := x.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		
+		payload, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
 		root, err := decodeJSON(payload)
 		if err != nil {
 			return nil, err
 		}
-		if err := checkXimalayaRet(root); err != nil {
-			return nil, err
-		}
+
 		data, ok := root["data"].(map[string]interface{})
 		if !ok {
 			return nil, errors.New("invalid tracks response")
 		}
-		if reason, ok := data["reason"].(string); ok && reason != "" {
-			return nil, errors.New("tracks blocked by risk control")
+
+		tracksData, ok := data["tracks"].(map[string]interface{})
+		if !ok {
+			return nil, errors.New("tracks data missing")
 		}
 
-		tracksRaw, ok := data["tracks"].([]interface{})
+		tracksRaw, ok := tracksData["list"].([]interface{})
 		if !ok || len(tracksRaw) == 0 {
 			break
 		}
@@ -281,7 +316,6 @@ func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
 				Title:    pickString(trackMap, "title", "trackTitle"),
 				Duration: pickInt(trackMap, "duration"),
 				IsFree:   !pickBool(trackMap, "isPaid", "is_paid"),
-				AudioURL: pickTrackAudioURL(trackMap),
 			}
 			if episode.ID == "" {
 				continue
@@ -292,12 +326,12 @@ func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
 			episodes = append(episodes, episode)
 		}
 
-		trackTotal := pickInt(data, "trackTotalCount")
-		if trackTotal > 0 && len(episodes) >= trackTotal {
+		maxPageId := pickInt(tracksData, "maxPageId")
+		if pageNum >= maxPageId || maxPageId == 0 {
 			break
 		}
 		pageNum++
-		if pageNum > 10 {
+		if pageNum > 20 {
 			break
 		}
 	}
@@ -306,29 +340,122 @@ func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
 }
 
 func (x *Ximalaya) fetchAudioURL(episodeID string, quality int) (string, error) {
-	timestamp := time.Now().UnixMilli()
-	endpoint := fmt.Sprintf("%s/mobile-playpage/track/v3/baseInfo/%d?device=www2&trackId=%s&trackQualityLevel=%d", x.baseURL, timestamp, url.QueryEscape(episodeID), quality)
-	payload, err := x.doGet(endpoint)
+	// 使用移动端v1 API，返回直接可用的音频URL
+	endpoint := fmt.Sprintf("https://mobile.ximalaya.com/mobile/v1/track/baseInfo?device=android&trackId=%s", url.QueryEscape(episodeID))
+	
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("User-Agent", "okhttp/3.12.1")
+
+	resp, err := x.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
 	root, err := decodeJSON(payload)
 	if err != nil {
 		return "", err
 	}
-	if err := checkXimalayaRet(root); err != nil {
-		return "", err
-	}
-	data, ok := root["data"].(map[string]interface{})
-	if !ok {
-		return "", errors.New("invalid audio response")
-	}
-
-	if pickBool(data, "isPaid", "is_paid") {
-		return "", errors.New("该内容需要授权")
+	
+	ret := pickInt(root, "ret")
+	if ret != 0 {
+		msg := pickString(root, "msg")
+		if msg == "" {
+			msg = "获取音频失败"
+		}
+		return "", errors.New(msg)
 	}
 
-	return pickAudioURL(data), nil
+	if pickBool(root, "isPaid") {
+		return "", errors.New("该内容需要付费")
+	}
+
+	// 按优先级选择音频URL
+	audioUrl := ""
+	switch quality {
+	case 2: // 高清
+		audioUrl = pickString(root, "playPathHq")
+	case 1: // 标准
+		audioUrl = pickString(root, "playPathAacv164", "playUrl64")
+	default: // 低质量
+		audioUrl = pickString(root, "playPathAacv224", "playUrl32")
+	}
+
+	// 如果指定质量没有，尝试其他
+	if audioUrl == "" {
+		audioUrl = pickString(root, "playPathAacv164", "playUrl64", "playPathAacv224", "playUrl32", "playPathHq")
+	}
+
+	if audioUrl == "" {
+		return "", errors.New("audio url not found")
+	}
+
+	return audioUrl, nil
+}
+
+// 解密喜马拉雅音频URL
+func decryptXimalayaUrl(encrypted string) string {
+	// 解密表
+	o := []byte{183, 174, 108, 16, 131, 159, 250, 5, 239, 110, 193, 202, 153, 137, 251, 176, 119, 150, 47, 204, 97, 237, 1, 71, 177, 42, 88, 218, 166, 82, 87, 94, 14, 195, 69, 127, 215, 240, 225, 197, 238, 142, 123, 44, 219, 50, 190, 29, 181, 186, 169, 98, 139, 185, 152, 13, 141, 76, 6, 157, 200, 132, 182, 49, 20, 116, 136, 43, 155, 194, 101, 231, 162, 242, 151, 213, 53, 60, 26, 134, 211, 56, 28, 223, 107, 161, 199, 15, 229, 61, 96, 41, 66, 158, 254, 21, 165, 253, 103, 89, 3, 168, 40, 246, 81, 95, 58, 31, 172, 78, 99, 45, 148, 187, 222, 124, 55, 203, 235, 64, 68, 149, 180, 35, 113, 207, 118, 111, 91, 38, 247, 214, 7, 212, 209, 189, 241, 18, 115, 173, 25, 236, 121, 249, 75, 57, 216, 10, 175, 112, 234, 164, 70, 206, 198, 255, 140, 230, 12, 32, 83, 46, 245, 0, 62, 227, 72, 191, 156, 138, 248, 114, 220, 90, 84, 170, 128, 19, 24, 122, 146, 80, 39, 37, 8, 34, 22, 11, 93, 130, 63, 154, 244, 160, 144, 79, 23, 133, 92, 54, 102, 210, 65, 67, 27, 196, 201, 106, 143, 52, 74, 100, 217, 179, 48, 233, 126, 117, 184, 226, 85, 171, 167, 86, 2, 147, 17, 135, 228, 252, 105, 30, 192, 129, 178, 120, 36, 145, 51, 163, 77, 205, 73, 4, 188, 125, 232, 33, 243, 109, 224, 104, 208, 221, 59, 9}
+	a := []byte{204, 53, 135, 197, 39, 73, 58, 160, 79, 24, 12, 83, 180, 250, 101, 60, 206, 30, 10, 227, 36, 95, 161, 16, 135, 150, 235, 116, 242, 116, 165, 171}
+
+	// URL安全base64转标准base64
+	encrypted = strings.ReplaceAll(encrypted, "_", "/")
+	encrypted = strings.ReplaceAll(encrypted, "-", "+")
+
+	// 添加padding
+	padding := (4 - len(encrypted)%4) % 4
+	for i := 0; i < padding; i++ {
+		encrypted += "="
+	}
+
+	// base64解码
+	encryptedData, err := base64.StdEncoding.DecodeString(encrypted)
+	if err != nil || len(encryptedData) < 16 {
+		return ""
+	}
+
+	// 分离数据和IV
+	data := encryptedData[:len(encryptedData)-16]
+	iv := encryptedData[len(encryptedData)-16:]
+
+	// 第一步：查表替换
+	decryptedData := make([]byte, len(data))
+	for i := 0; i < len(data); i++ {
+		decryptedData[i] = o[data[i]]
+	}
+
+	// 第二步：与IV异或（每16字节一组）
+	for i := 0; i < len(decryptedData); i += 16 {
+		end := i + 16
+		if end > len(decryptedData) {
+			end = len(decryptedData)
+		}
+		for j := i; j < end; j++ {
+			decryptedData[j] ^= iv[j-i]
+		}
+	}
+
+	// 第三步：与密钥a异或（每32字节一组）
+	for i := 0; i < len(decryptedData); i += 32 {
+		end := i + 32
+		if end > len(decryptedData) {
+			end = len(decryptedData)
+		}
+		for j := i; j < end; j++ {
+			decryptedData[j] ^= a[j-i]
+		}
+	}
+
+	return string(decryptedData)
 }
 
 func (x *Ximalaya) searchViaFront(keyword string, page int) (*SearchResult, error) {

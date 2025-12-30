@@ -44,6 +44,14 @@ func SetupRoutes() *gin.Engine {
 		v1Group.GET("/sources/:id/search", v1.SearchSource)
 		v1Group.GET("/sources/:id/books/:bookId", v1.GetSourceBookDetail)
 		v1Group.GET("/sources/:id/audio/:episodeId", v1.GetSourceAudio)
+
+		// 播放进度
+		v1Group.POST("/playback/progress", v1.SavePlaybackProgress)
+		v1Group.GET("/playback/progress", v1.GetPlaybackProgress)
+		v1Group.GET("/users/:userId/history", v1.GetUserHistory)
+
+		// 音频代理
+		v1Group.GET("/proxy/ximalaya", v1.ProxyXimalayaAudio)
 	}
 
 	return router
