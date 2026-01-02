@@ -92,7 +92,7 @@ export const sourceApi = {
     apiClient.get(`/sources/${sourceId}/books/${encodeURIComponent(bookId)}`).then(res => res.data),
 
   // 获取音频地址
-  getSourceAudio: (sourceId: string, episodeId: string): Promise<ApiResponse<{audio_url: string}>> =>
+  getSourceAudio: (sourceId: string, episodeId: string): Promise<ApiResponse<{audio_url: string; audio_proxy_url?: string}>> =>
     apiClient.get(`/sources/${sourceId}/audio/${encodeURIComponent(episodeId)}`).then(res => res.data),
 };
 

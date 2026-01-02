@@ -68,13 +68,15 @@ const PlayerScreen: React.FC = () => {
           const response = await sourceApi.getSourceBookDetail(sourceId, bookId);
           if (response.code === 200 && response.data) {
             const detail = response.data as Book;
-            const list: Episode[] = (detail.episodes || []).map((ep, index) => ({
+            const rawEpisodes = detail.chapters || detail.episodes || [];
+            const list: Episode[] = rawEpisodes.map((ep: any, index: number) => ({
               id: ep.id.toString(),
               title: ep.title,
               duration: ep.duration || 0,
-              episode_num: ep.episode_num || index + 1,
+              episode_num: ep.episode_num || ep.index || index + 1,
               audio_url: ep.audio_url,
-              is_free: (ep as any).is_free,
+              audio_proxy_url: ep.audio_proxy_url,
+              is_free: ep.is_free ?? true,
             }));
             setBook(detail);
             setEpisodes(list);

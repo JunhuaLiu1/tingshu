@@ -272,6 +272,16 @@ func fixCoverURL(url string) string {
 	return url
 }
 
+func normalizeXimalayaAudioURL(url string) string {
+	if url == "" {
+		return ""
+	}
+	if strings.HasPrefix(url, "//") {
+		return "https:" + url
+	}
+	return strings.TrimSpace(url)
+}
+
 func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
 	pageSize := 50
 	pageNum := 1
@@ -378,16 +388,31 @@ func (x *Ximalaya) fetchAudioURL(episodeID string, quality int) (string, error) 
 		return "", err
 	}
 
+	data := root
+	dataIsRoot := true
+	if dataNode, ok := root["data"].(map[string]interface{}); ok {
+		data = dataNode
+		dataIsRoot = false
+	}
+
 	ret := pickInt(root, "ret")
+	if ret == 0 {
+		// ok
+	} else if !dataIsRoot {
+		ret = pickInt(data, "ret")
+	}
 	if ret != 0 {
 		msg := pickString(root, "msg")
+		if msg == "" && !dataIsRoot {
+			msg = pickString(data, "msg")
+		}
 		if msg == "" {
 			msg = "获取音频失败"
 		}
 		return "", errors.New(msg)
 	}
 
-	if pickBool(root, "isPaid") {
+	if pickBool(root, "isPaid") || pickBool(data, "isPaid") {
 		return "", errors.New("该内容需要付费")
 	}
 
@@ -395,23 +420,30 @@ func (x *Ximalaya) fetchAudioURL(episodeID string, quality int) (string, error) 
 	audioUrl := ""
 	switch quality {
 	case 2: // 高清
-		audioUrl = pickString(root, "playPathHq")
+		audioUrl = pickString(data, "playPathHq", "playUrlHq")
 	case 1: // 标准
-		audioUrl = pickString(root, "playPathAacv164", "playUrl64")
+		audioUrl = pickString(data, "playPathAacv164", "playUrl64")
 	default: // 低质量
-		audioUrl = pickString(root, "playPathAacv224", "playUrl32")
+		audioUrl = pickString(data, "playPathAacv224", "playUrl32")
 	}
 
-	// 如果指定质量没有，尝试其他
 	if audioUrl == "" {
-		audioUrl = pickString(root, "playPathAacv164", "playUrl64", "playPathAacv224", "playUrl32", "playPathHq")
+		audioUrl = pickTrackAudioURL(data)
 	}
-
+	if audioUrl == "" {
+		audioUrl = pickAudioURL(data)
+	}
+	if audioUrl == "" && !dataIsRoot {
+		audioUrl = pickTrackAudioURL(root)
+	}
+	if audioUrl == "" && !dataIsRoot {
+		audioUrl = pickAudioURL(root)
+	}
 	if audioUrl == "" {
 		return "", errors.New("audio url not found")
 	}
 
-	return audioUrl, nil
+	return normalizeXimalayaAudioURL(audioUrl), nil
 }
 
 // 解密喜马拉雅音频URL

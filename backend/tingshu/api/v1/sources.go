@@ -1,8 +1,11 @@
 package v1
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -99,7 +102,38 @@ func GetSourceBookDetail(c *gin.Context) {
 		Error(c, http.StatusBadGateway, err.Error())
 		return
 	}
+	if len(detail.Chapters) == 0 {
+		chapters, err := src.GetChapters(bookID)
+		if err != nil {
+			Error(c, http.StatusBadGateway, err.Error())
+			return
+		}
+		detail.Chapters = chapters
+	}
 	Success(c, detail)
+}
+
+func GetSourceChapters(c *gin.Context) {
+	sourceID := c.Param("id")
+	bookID := c.Param("bookId")
+	if bookID == "" {
+		Error(c, http.StatusBadRequest, "Book id is required")
+		return
+	}
+
+	manager := getSourceManager()
+	src, ok := manager.Get(sourceID)
+	if !ok {
+		Error(c, http.StatusNotFound, "Source not found")
+		return
+	}
+
+	chapters, err := src.GetChapters(bookID)
+	if err != nil {
+		Error(c, http.StatusBadGateway, err.Error())
+		return
+	}
+	Success(c, chapters)
 }
 
 func GetSourceAudio(c *gin.Context) {
@@ -122,7 +156,10 @@ func GetSourceAudio(c *gin.Context) {
 		Error(c, http.StatusBadGateway, err.Error())
 		return
 	}
-	Success(c, gin.H{"audio_url": audioURL})
+	Success(c, gin.H{
+		"audio_url":       audioURL,
+		"audio_proxy_url": buildProxyURL(c, sourceID, audioURL),
+	})
 }
 
 func DisableSource(c *gin.Context) {
@@ -147,4 +184,36 @@ func EnableSource(c *gin.Context) {
 		"message": "source enabled",
 		"id":      sourceID,
 	})
+}
+
+func buildProxyURL(c *gin.Context, sourceID, audioURL string) string {
+	if strings.TrimSpace(sourceID) == "" || strings.TrimSpace(audioURL) == "" {
+		return ""
+	}
+
+	scheme := "http"
+	if forwarded := c.GetHeader("X-Forwarded-Proto"); forwarded != "" {
+		scheme = strings.TrimSpace(strings.Split(forwarded, ",")[0])
+	} else if c.Request.TLS != nil {
+		scheme = "https"
+	}
+
+	host := c.GetHeader("X-Forwarded-Host")
+	if host == "" {
+		host = c.Request.Host
+	}
+	if host != "" {
+		host = strings.TrimSpace(strings.Split(host, ",")[0])
+	}
+	if host == "" {
+		return ""
+	}
+
+	return fmt.Sprintf(
+		"%s://%s/api/v1/proxy/audio?source=%s&url=%s",
+		scheme,
+		host,
+		url.QueryEscape(sourceID),
+		url.QueryEscape(audioURL),
+	)
 }

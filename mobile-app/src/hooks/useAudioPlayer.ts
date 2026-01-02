@@ -18,6 +18,7 @@ export interface Episode {
   duration: number;
   episode_num: number;
   audio_url?: string;
+  audio_proxy_url?: string;
   is_free?: boolean;
 }
 
@@ -124,37 +125,62 @@ export function useAudioPlayer({ sourceId, bookId, onError }: UseAudioPlayerOpti
     await unloadSound();
 
     try {
-      let audioUrl = episode.audio_url;
+      let audioUrl = episode.audio_proxy_url;
+      let fallbackUrl = episode.audio_url;
 
-      // 如果没有直接的音频URL，从API获取
-      if (!audioUrl && sourceId) {
-        const response = await sourceApi.getSourceAudio(sourceId, episode.id);
-        if (response.code === 200 && response.data?.audio_url) {
-          audioUrl = response.data.audio_url;
-        } else {
-          throw new Error('获取音频地址失败');
+      if (sourceId && !audioUrl) {
+        try {
+          const response = await sourceApi.getSourceAudio(sourceId, episode.id);
+          if (response.code === 200 && response.data?.audio_url) {
+            const proxyUrl = response.data.audio_proxy_url;
+            audioUrl = proxyUrl || response.data.audio_url;
+            fallbackUrl = response.data.audio_url;
+          } else if (!fallbackUrl) {
+            throw new Error('获取音频地址失败');
+          }
+        } catch {
+          if (!fallbackUrl) {
+            throw new Error('获取音频地址失败');
+          }
         }
       }
 
+      if (!sourceId) {
+        audioUrl = audioUrl || fallbackUrl;
+      }
+      if (!audioUrl) {
+        audioUrl = fallbackUrl;
+      }
       if (!audioUrl) throw new Error('无效的音频地址');
 
-      // 尝试从缓存加载，否则下载
-      let localUrl = await audioCache.getCachedUrl(episode.id);
-      if (!localUrl) {
-        localUrl = await audioCache.cacheAudio(episode.id, audioUrl, setDownloadProgress);
-      }
+      const loadWithUrl = async (urlToUse: string) => {
+        let localUrl = await audioCache.getCachedUrl(episode.id);
+        if (!localUrl || localUrl !== urlToUse) {
+          localUrl = await audioCache.cacheAudio(episode.id, urlToUse, setDownloadProgress);
+        }
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: localUrl },
+          { shouldPlay: false, progressUpdateIntervalMillis: 500 },
+          onPlaybackStatusUpdate
+        );
+        soundRef.current = sound;
+      };
 
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: localUrl },
-        { shouldPlay: false, progressUpdateIntervalMillis: 500 },
-        onPlaybackStatusUpdate
-      );
-      soundRef.current = sound;
+      try {
+        await loadWithUrl(audioUrl);
+      } catch (error) {
+        if (fallbackUrl && fallbackUrl !== audioUrl) {
+          await unloadSound();
+          await loadWithUrl(fallbackUrl);
+        } else {
+          throw error;
+        }
+      }
 
       // 恢复上次播放位置
       const savedPosition = await loadSavedProgress(episode.id);
-      if (savedPosition > 0) {
-        await sound.setPositionAsync(savedPosition * 1000);
+      if (savedPosition > 0 && soundRef.current) {
+        await soundRef.current.setPositionAsync(savedPosition * 1000);
       }
 
       setState(s => ({ ...s, status: 'paused' }));

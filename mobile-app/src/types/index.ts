@@ -29,6 +29,8 @@ export interface Book {
   coverUrl?: string; // 前端格式
   audio_url?: string;
   audioUrl?: string;
+  audio_proxy_url?: string;
+  audioProxyUrl?: string;
   duration?: number; // 可选：总时长（秒）
   play_count?: number; // 后端格式
   playCount?: string; // 前端格式：显示用
@@ -37,21 +39,33 @@ export interface Book {
   category_id?: number;
   category?: string; // 前端格式：分类名称
   episodes?: Episode[];
+  chapters?: Chapter[];
   created_at: string;
   updated_at: string;
   rank?: number; // 排行榜位置
 }
 
 export interface Episode {
-  id: number;
+  id: number | string;
   book_id: number;
   title: string;
   audio_url: string;
+  audio_proxy_url?: string;
   duration: number;
   episode_num: number;
   play_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface Chapter {
+  id: number | string;
+  title: string;
+  index?: number;
+  duration?: number;
+  is_free?: boolean;
+  audio_url?: string;
+  audio_proxy_url?: string;
 }
 
 export interface PlayHistory {

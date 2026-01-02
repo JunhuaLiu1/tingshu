@@ -198,29 +198,83 @@ func (h *Huanting) GetAudioURL(episodeID string) (string, error) {
 		return "", err
 	}
 
-	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(string(html)))
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(html)))
+	if err != nil {
+		return "", err
+	}
 
 	var audioURL string
-	doc.Find("script").Each(func(i int, sel *goquery.Selection) {
+
+	doc.Find("audio source").Each(func(_ int, sel *goquery.Selection) {
 		if audioURL != "" {
 			return
 		}
-
-		text := sel.Text()
-		if strings.Contains(text, "audio") || strings.Contains(text, "mp3") {
-			re := regexp.MustCompile(`['"]([^'"]*\.mp3[^'"]*)['"]`)
-			matches := re.FindStringSubmatch(text)
-			if len(matches) > 1 {
-				audioURL = matches[1]
-			}
+		if src, exists := sel.Attr("src"); exists {
+			audioURL = strings.TrimSpace(src)
 		}
 	})
 
+	if audioURL == "" {
+		doc.Find("audio").Each(func(_ int, sel *goquery.Selection) {
+			if audioURL != "" {
+				return
+			}
+			if src, exists := sel.Attr("src"); exists {
+				audioURL = strings.TrimSpace(src)
+			}
+			if audioURL == "" {
+				if src, exists := sel.Attr("data-src"); exists {
+					audioURL = strings.TrimSpace(src)
+				}
+			}
+		})
+	}
+
+	if audioURL == "" {
+		doc.Find("script").Each(func(_ int, sel *goquery.Selection) {
+			if audioURL != "" {
+				return
+			}
+
+			text := sel.Text()
+			if strings.Contains(text, "audio") || strings.Contains(text, "mp3") || strings.Contains(text, "m3u8") {
+				re := regexp.MustCompile(`['"]([^'"]*\.(mp3|m3u8)[^'"]*)['"]`)
+				matches := re.FindStringSubmatch(text)
+				if len(matches) > 1 {
+					audioURL = matches[1]
+				}
+			}
+		})
+	}
+
+	audioURL = h.normalizeAudioURL(audioURL)
 	if audioURL != "" {
 		return audioURL, nil
 	}
 
 	return "", errors.New("audio URL not found")
+}
+
+func (h *Huanting) normalizeAudioURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if strings.HasPrefix(raw, "//") {
+		return "https:" + raw
+	}
+	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+		return raw
+	}
+	baseURL, err := url.Parse(h.baseURL)
+	if err != nil {
+		return raw
+	}
+	ref, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	return baseURL.ResolveReference(ref).String()
 }
 
 func (h *Huanting) GetCategories() ([]Category, error) {
