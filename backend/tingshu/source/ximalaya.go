@@ -164,15 +164,28 @@ func (x *Ximalaya) GetBookDetail(bookID string) (*BookDetail, error) {
 		book.Status = albumInfo.Status
 	}
 
+	return &BookDetail{
+		Book: book,
+	}, nil
+}
+
+func (x *Ximalaya) GetChapters(bookID string) ([]Chapter, error) {
 	episodes, err := x.fetchTracks(bookID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &BookDetail{
-		Book:     book,
-		Episodes: episodes,
-	}, nil
+	chapters := make([]Chapter, len(episodes))
+	for i, e := range episodes {
+		chapters[i] = Chapter{
+			ID:       e.ID,
+			Title:    e.Title,
+			Index:    i + 1,
+			Duration: e.Duration,
+			IsFree:   e.IsFree,
+		}
+	}
+	return chapters, nil
 }
 
 func (x *Ximalaya) GetAudioURL(episodeID string) (string, error) {
@@ -268,19 +281,19 @@ func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
 		// 使用移动端API，更稳定
 		timestamp := time.Now().UnixMilli()
 		endpoint := fmt.Sprintf("https://mobile.ximalaya.com/mobile-album/album/page/ts-%d?albumId=%s&pageId=%d&pageSize=%d&isAsc=true", timestamp, url.QueryEscape(bookID), pageNum, pageSize)
-		
+
 		req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, err
 		}
 		req.Header.Set("User-Agent", "okhttp/3.12.1")
-		
+
 		resp, err := x.client.Do(req)
 		if err != nil {
 			return nil, err
 		}
 		defer resp.Body.Close()
-		
+
 		payload, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
@@ -342,7 +355,7 @@ func (x *Ximalaya) fetchTracks(bookID string) ([]Episode, error) {
 func (x *Ximalaya) fetchAudioURL(episodeID string, quality int) (string, error) {
 	// 使用移动端v1 API，返回直接可用的音频URL
 	endpoint := fmt.Sprintf("https://mobile.ximalaya.com/mobile/v1/track/baseInfo?device=android&trackId=%s", url.QueryEscape(episodeID))
-	
+
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return "", err
@@ -364,7 +377,7 @@ func (x *Ximalaya) fetchAudioURL(episodeID string, quality int) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	
+
 	ret := pickInt(root, "ret")
 	if ret != 0 {
 		msg := pickString(root, "msg")
@@ -738,4 +751,50 @@ func pickTrackAudioURL(data map[string]interface{}) string {
 		return url
 	}
 	return ""
+}
+
+func (x *Ximalaya) Version() string {
+	return "1.0.0"
+}
+
+func (x *Ximalaya) IsSearchable() bool {
+	return true
+}
+
+func (x *Ximalaya) HasCategories() bool {
+	return true
+}
+
+func (x *Ximalaya) NeedProxy() bool {
+	return false
+}
+
+func (x *Ximalaya) NeedCookie() bool {
+	return false
+}
+
+func (x *Ximalaya) GetCategories() ([]Category, error) {
+	return []Category{
+		{ID: "xuanhuan", Name: "玄幻", Count: 0},
+		{ID: "dushi", Name: "都市", Count: 0},
+		{ID: "jishi", Name: "纪实", Count: 0},
+	}, nil
+}
+
+func (x *Ximalaya) HealthCheck() HealthStatus {
+	_, err := x.client.Get(x.baseURL)
+	if err != nil {
+		return HealthStatus{
+			Status:      "down",
+			SuccessRate: 0,
+			LastCheckAt: time.Now(),
+			Error:       err.Error(),
+		}
+	}
+
+	return HealthStatus{
+		Status:      "healthy",
+		SuccessRate: 1.0,
+		LastCheckAt: time.Now(),
+	}
 }

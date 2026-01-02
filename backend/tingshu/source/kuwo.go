@@ -41,6 +41,52 @@ func (k *Kuwo) BaseURL() string {
 	return kuwoBaseURL
 }
 
+func (k *Kuwo) Version() string {
+	return "1.0.0"
+}
+
+func (k *Kuwo) IsSearchable() bool {
+	return true
+}
+
+func (k *Kuwo) HasCategories() bool {
+	return true
+}
+
+func (k *Kuwo) NeedProxy() bool {
+	return false
+}
+
+func (k *Kuwo) NeedCookie() bool {
+	return false
+}
+
+func (k *Kuwo) GetCategories() ([]Category, error) {
+	return []Category{
+		{ID: "xuanhuan", Name: "玄幻", Count: 0},
+		{ID: "dushi", Name: "都市", Count: 0},
+		{ID: "lishi", Name: "历史", Count: 0},
+	}, nil
+}
+
+func (k *Kuwo) HealthCheck() HealthStatus {
+	_, err := k.client.Get(kuwoBaseURL)
+	if err != nil {
+		return HealthStatus{
+			Status:      "down",
+			SuccessRate: 0,
+			LastCheckAt: time.Now(),
+			Error:       err.Error(),
+		}
+	}
+
+	return HealthStatus{
+		Status:      "healthy",
+		SuccessRate: 1.0,
+		LastCheckAt: time.Now(),
+	}
+}
+
 func (k *Kuwo) Search(keyword string, page int) (*SearchResult, error) {
 	if strings.TrimSpace(keyword) == "" {
 		return nil, errors.New("keyword is empty")
@@ -100,24 +146,31 @@ func (k *Kuwo) GetBookDetail(bookID string) (*BookDetail, error) {
 		return nil, errors.New("book id is empty")
 	}
 
-	episodes, err := k.fetchAlbumEpisodes(bookID)
-	if err != nil {
-		return &BookDetail{
-			Book: Book{
-				ID:       bookID,
-				SourceID: k.ID(),
-			},
-			Episodes: []Episode{},
-		}, nil
-	}
-
 	return &BookDetail{
 		Book: Book{
 			ID:       bookID,
 			SourceID: k.ID(),
 		},
-		Episodes: episodes,
 	}, nil
+}
+
+func (k *Kuwo) GetChapters(bookID string) ([]Chapter, error) {
+	episodes, err := k.fetchAlbumEpisodes(bookID)
+	if err != nil {
+		return nil, err
+	}
+
+	chapters := make([]Chapter, len(episodes))
+	for i, e := range episodes {
+		chapters[i] = Chapter{
+			ID:       e.ID,
+			Title:    e.Title,
+			Index:    i + 1,
+			Duration: e.Duration,
+			IsFree:   e.IsFree,
+		}
+	}
+	return chapters, nil
 }
 
 func (k *Kuwo) GetAudioURL(episodeID string) (string, error) {

@@ -18,6 +18,8 @@ func getSourceManager() *source.Manager {
 	sourceOnce.Do(func() {
 		sourceManager = source.NewManager()
 		_ = sourceManager.Register(source.NewXimalaya())
+		_ = sourceManager.Register(source.NewKuwo())
+		_ = sourceManager.Register(source.NewHuanting())
 	})
 	return sourceManager
 }
@@ -25,6 +27,31 @@ func getSourceManager() *source.Manager {
 func GetSources(c *gin.Context) {
 	manager := getSourceManager()
 	Success(c, manager.List())
+}
+
+func GetSourcesStatus(c *gin.Context) {
+	manager := getSourceManager()
+	Success(c, gin.H{
+		"total":   len(manager.List()),
+		"sources": manager.List(),
+	})
+}
+
+func GlobalSearch(c *gin.Context) {
+	manager := getSourceManager()
+	query := c.Query("q")
+
+	if query == "" {
+		Error(c, http.StatusBadRequest, "Search query is required")
+		return
+	}
+
+	results := manager.GlobalSearch(query)
+
+	Success(c, gin.H{
+		"total":   len(results),
+		"results": results,
+	})
 }
 
 func SearchSource(c *gin.Context) {
@@ -96,4 +123,28 @@ func GetSourceAudio(c *gin.Context) {
 		return
 	}
 	Success(c, gin.H{"audio_url": audioURL})
+}
+
+func DisableSource(c *gin.Context) {
+	sourceID := c.Param("id")
+
+	manager := getSourceManager()
+	manager.Disable(sourceID)
+
+	Success(c, gin.H{
+		"message": "source disabled",
+		"id":      sourceID,
+	})
+}
+
+func EnableSource(c *gin.Context) {
+	sourceID := c.Param("id")
+
+	manager := getSourceManager()
+	manager.Enable(sourceID)
+
+	Success(c, gin.H{
+		"message": "source enabled",
+		"id":      sourceID,
+	})
 }

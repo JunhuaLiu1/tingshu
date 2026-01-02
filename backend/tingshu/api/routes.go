@@ -33,7 +33,7 @@ func SetupRoutes() *gin.Engine {
 		// 分类相关
 		v1Group.GET("/categories", v1.GetCategories)
 
-		// 排行榜
+		// 排行榜样
 		v1Group.GET("/rankings", v1.GetRankings)
 
 		// 搜索
@@ -41,9 +41,13 @@ func SetupRoutes() *gin.Engine {
 
 		// 音源
 		v1Group.GET("/sources", v1.GetSources)
+		v1Group.GET("/sources/status", v1.GetSourcesStatus)
+		v1Group.POST("/global/search", v1.GlobalSearch)
 		v1Group.GET("/sources/:id/search", v1.SearchSource)
 		v1Group.GET("/sources/:id/books/:bookId", v1.GetSourceBookDetail)
 		v1Group.GET("/sources/:id/audio/:episodeId", v1.GetSourceAudio)
+		v1Group.POST("/sources/:id/disable", v1.DisableSource)
+		v1Group.POST("/sources/:id/enable", v1.EnableSource)
 
 		// 播放进度
 		v1Group.POST("/playback/progress", v1.SavePlaybackProgress)
