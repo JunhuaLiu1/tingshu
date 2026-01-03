@@ -161,11 +161,14 @@ func (s *Shuyinfm) GetBookDetail(bookID string) (*BookDetail, error) {
 		return nil, errors.New("book id is empty")
 	}
 
-	endpoint := fmt.Sprintf("%s/book/%s.html", s.baseURL, bookID)
-
+	endpoint := fmt.Sprintf("%s/album/%s.html", s.baseURL, bookID)
 	html, err := s.doGet(endpoint)
 	if err != nil {
-		return nil, err
+		endpoint = fmt.Sprintf("%s/book/%s.html", s.baseURL, bookID)
+		html, err = s.doGet(endpoint)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(html)))

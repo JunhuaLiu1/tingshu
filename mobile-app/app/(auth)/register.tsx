@@ -64,8 +64,15 @@ export default function RegisterScreen() {
         password,
       });
       if (res.code === 200 && res.data) {
-        await login(res.data.user, res.data.session);
-        router.replace('/(tabs)/profile');
+        if (res.data.session) {
+          // 注册成功并已自动登录
+          await login(res.data.user, res.data.session);
+          router.replace('/(tabs)/profile');
+        } else {
+          // 注册成功但需要邮箱验证
+          alert('注册成功，请前往邮箱验证激活账号');
+          router.replace('/(auth)/login');
+        }
       } else {
         setError(getErrorMessage(res.message));
       }
@@ -127,6 +134,8 @@ export default function RegisterScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            textContentType="none"
+            autoComplete="off"
           />
 
           <TextInput
@@ -136,6 +145,8 @@ export default function RegisterScreen() {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
+            textContentType="none"
+            autoComplete="off"
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}

@@ -13,7 +13,13 @@ import (
 	"time"
 )
 
-const kuwoBaseURL = "https://tingshu.kuwo.cn"
+const kuwoBaseURL = "https://tsm.kuwo.cn"
+
+var kuwoBaseURLs = []string{
+	"https://tsm.kuwo.cn",
+	"https://tingshu.kuwo.cn",
+	"http://baby.kuwo.cn",
+}
 
 type Kuwo struct {
 	client *http.Client
@@ -95,50 +101,71 @@ func (k *Kuwo) Search(keyword string, page int) (*SearchResult, error) {
 		page = 1
 	}
 
-	endpoint := fmt.Sprintf(
-		"%s/tingshu/api/search/Search?rn=10&type=album&version=8.5.6.1&wd=%s&pn=%d",
-		kuwoBaseURL,
-		url.QueryEscape(keyword),
-		page,
-	)
+	var lastErr error
+	var fallback *SearchResult
+	for _, base := range kuwoBaseURLs {
+		endpoint := fmt.Sprintf(
+			"%s/tingshu/api/search/Search?rn=10&type=album&version=8.5.6.1&wd=%s&pn=%d",
+			base,
+			url.QueryEscape(keyword),
+			page,
+		)
 
-	payload, err := k.doGet(endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp kuwoSearchResponse
-	if err := json.Unmarshal(payload, &resp); err != nil {
-		return nil, err
-	}
-
-	books := make([]Book, 0, len(resp.Data.Data))
-	for _, item := range resp.Data.Data {
-		songTotal := atoiDefault(item.SongTotal)
-		book := Book{
-			ID:          strings.TrimSpace(item.AlbumID),
-			Title:       strings.TrimSpace(item.AlbumName),
-			Author:      strings.TrimSpace(item.ArtistName),
-			CoverURL:    strings.TrimSpace(item.CoverImg),
-			Description: strings.TrimSpace(item.Title),
-			Status:      fmt.Sprintf("共 %d 集", songTotal),
-			SourceID:    k.ID(),
-			PlayCount:   atoiDefault(item.PlayCount),
+		payload, err := k.doGet(endpoint)
+		if err != nil {
+			lastErr = err
+			continue
 		}
-		books = append(books, book)
+
+		var resp kuwoSearchResponse
+		if err := json.Unmarshal(payload, &resp); err != nil {
+			lastErr = err
+			continue
+		}
+
+		books := make([]Book, 0, len(resp.Data.Data))
+		for _, item := range resp.Data.Data {
+			songTotal := atoiDefault(item.SongTotal)
+			book := Book{
+				ID:          strings.TrimSpace(item.AlbumID),
+				Title:       strings.TrimSpace(item.AlbumName),
+				Author:      strings.TrimSpace(item.ArtistName),
+				CoverURL:    strings.TrimSpace(item.CoverImg),
+				Description: strings.TrimSpace(item.Title),
+				Status:      fmt.Sprintf("共 %d 集", songTotal),
+				SourceID:    k.ID(),
+				PlayCount:   atoiDefault(item.PlayCount),
+			}
+			books = append(books, book)
+		}
+
+		totalPage := 0
+		total := atoiDefault(resp.Data.Total)
+		if total > 0 {
+			totalPage = (total + 9) / 10
+		}
+
+		result := &SearchResult{
+			Books:       books,
+			TotalPage:   totalPage,
+			CurrentPage: page,
+		}
+
+		if len(books) > 0 || totalPage > 0 {
+			return result, nil
+		}
+		if fallback == nil {
+			fallback = result
+		}
 	}
 
-	totalPage := 0
-	total := atoiDefault(resp.Data.Total)
-	if total > 0 {
-		totalPage = (total + 9) / 10
+	if fallback != nil {
+		return fallback, nil
 	}
-
-	return &SearchResult{
-		Books:       books,
-		TotalPage:   totalPage,
-		CurrentPage: page,
-	}, nil
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return &SearchResult{Books: []Book{}, TotalPage: 0, CurrentPage: page}, nil
 }
 
 func (k *Kuwo) GetBookDetail(bookID string) (*BookDetail, error) {
@@ -179,10 +206,37 @@ func (k *Kuwo) GetAudioURL(episodeID string) (string, error) {
 	}
 
 	rid := strings.TrimPrefix(episodeID, "MUSIC_")
-	return fmt.Sprintf(
+	endpoint := fmt.Sprintf(
 		"http://antiserver.kuwo.cn/anti.s?format=mp3&rid=MUSIC_%s&response=res&type=convert_url",
 		url.QueryEscape(rid),
-	), nil
+	)
+
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", ximalayaUserAgent)
+	req.Header.Set("Accept", "*/*")
+
+	resp, err := k.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	payload, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", err
+	}
+	audioURL := strings.TrimSpace(string(payload))
+	if audioURL == "" {
+		return "", errors.New("audio url not found")
+	}
+	return audioURL, nil
 }
 
 func (k *Kuwo) doGet(endpoint string) ([]byte, error) {
@@ -247,46 +301,48 @@ func atoiDefault(value string) int {
 }
 
 func (k *Kuwo) fetchAlbumEpisodes(bookID string) ([]Episode, error) {
-	endpoints := []string{
-		fmt.Sprintf("%s/tingshu/api/data/album/songs?albumId=%s&online=0", kuwoBaseURL, url.QueryEscape(bookID)),
-		fmt.Sprintf("%s/tingshu/api/data/album/songs?albumId=%s&pn=1&rn=200&online=0", kuwoBaseURL, url.QueryEscape(bookID)),
-		fmt.Sprintf("%s/tingshu/api/album/songs?albumId=%s&pn=1&rn=200", kuwoBaseURL, url.QueryEscape(bookID)),
-		fmt.Sprintf("%s/tingshu/api/album/track?albumId=%s&pn=1&rn=200", kuwoBaseURL, url.QueryEscape(bookID)),
-	}
-
-	for _, endpoint := range endpoints {
-		log.Printf("kuwo: 尝试获取章节 %s", endpoint)
-		payload, err := k.doGet(endpoint)
-		if err != nil {
-			log.Printf("kuwo: 请求失败 %s err=%v", endpoint, err)
-			continue
+	for _, base := range kuwoBaseURLs {
+		endpoints := []string{
+			fmt.Sprintf("%s/tingshu/api/data/album/songs?albumId=%s&online=0", base, url.QueryEscape(bookID)),
+			fmt.Sprintf("%s/tingshu/api/data/album/songs?albumId=%s&pn=1&rn=200&online=0", base, url.QueryEscape(bookID)),
+			fmt.Sprintf("%s/tingshu/api/album/songs?albumId=%s&pn=1&rn=200", base, url.QueryEscape(bookID)),
+			fmt.Sprintf("%s/tingshu/api/album/track?albumId=%s&pn=1&rn=200", base, url.QueryEscape(bookID)),
 		}
 
-		var resp kuwoAlbumResponse
-		if err := json.Unmarshal(payload, &resp); err != nil {
-			log.Printf("kuwo: 解析失败 %s err=%v", endpoint, err)
-			continue
-		}
-		if resp.Code != 200 || len(resp.Data) == 0 {
-			log.Printf("kuwo: 返回异常 %s code=%d msg=%s data_len=%d", endpoint, resp.Code, resp.Msg, len(resp.Data))
-			continue
-		}
-
-		episodes := make([]Episode, 0, len(resp.Data))
-		for _, item := range resp.Data {
-			if item.MusicRID == "" {
+		for _, endpoint := range endpoints {
+			log.Printf("kuwo: 尝试获取章节 %s", endpoint)
+			payload, err := k.doGet(endpoint)
+			if err != nil {
+				log.Printf("kuwo: 请求失败 %s err=%v", endpoint, err)
 				continue
 			}
-			rid := strings.TrimPrefix(item.MusicRID, "MUSIC_")
-			episodes = append(episodes, Episode{
-				ID:       rid,
-				Title:    strings.TrimSpace(item.Name),
-				Duration: item.Duration,
-				IsFree:   true,
-			})
-		}
-		if len(episodes) > 0 {
-			return episodes, nil
+
+			var resp kuwoAlbumResponse
+			if err := json.Unmarshal(payload, &resp); err != nil {
+				log.Printf("kuwo: 解析失败 %s err=%v", endpoint, err)
+				continue
+			}
+			if resp.Code != 200 || len(resp.Data) == 0 {
+				log.Printf("kuwo: 返回异常 %s code=%d msg=%s data_len=%d", endpoint, resp.Code, resp.Msg, len(resp.Data))
+				continue
+			}
+
+			episodes := make([]Episode, 0, len(resp.Data))
+			for _, item := range resp.Data {
+				if item.MusicRID == "" {
+					continue
+				}
+				rid := strings.TrimPrefix(item.MusicRID, "MUSIC_")
+				episodes = append(episodes, Episode{
+					ID:       rid,
+					Title:    strings.TrimSpace(item.Name),
+					Duration: item.Duration,
+					IsFree:   true,
+				})
+			}
+			if len(episodes) > 0 {
+				return episodes, nil
+			}
 		}
 	}
 

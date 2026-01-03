@@ -46,7 +46,7 @@ func SetupRoutes() *gin.Engine {
 		v1Group.GET("/sources/:id/search", v1.SearchSource)
 		v1Group.GET("/sources/:id/books/:bookId", v1.GetSourceBookDetail)
 		v1Group.GET("/sources/:id/chapters/:bookId", v1.GetSourceChapters)
-		v1Group.GET("/sources/:id/audio/:episodeId", v1.GetSourceAudio)
+		v1Group.GET("/sources/:id/audio/*episodeId", v1.GetSourceAudio)
 		v1Group.POST("/sources/:id/disable", v1.DisableSource)
 		v1Group.POST("/sources/:id/enable", v1.EnableSource)
 
@@ -57,6 +57,7 @@ func SetupRoutes() *gin.Engine {
 
 		// 音频代理
 		v1Group.GET("/proxy/ximalaya", v1.ProxyXimalayaAudio)
+		v1Group.GET("/proxy/audio", v1.ProxyAudio)
 
 		// 认证
 		v1Group.POST("/auth/register", v1.Register)

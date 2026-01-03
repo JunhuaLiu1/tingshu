@@ -27,10 +27,13 @@ type LoginRequest struct {
 
 // Supabase 响应结构
 type SupabaseAuthResponse struct {
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
-	ExpiresIn    int          `json:"expires_in"`
-	User         SupabaseUser `json:"user"`
+	AccessToken  string        `json:"access_token"`
+	RefreshToken string        `json:"refresh_token"`
+	ExpiresIn    int           `json:"expires_in"`
+	User         *SupabaseUser `json:"user"`
+	// 兼容直接返回 User 对象的情况
+	ID    string `json:"id"`
+	Email string `json:"email"`
 }
 
 type SupabaseUser struct {
@@ -103,30 +106,53 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// 解析 User ID 和 Email
+	userID := authResp.ID
+	userEmail := authResp.Email
+	if authResp.User != nil && authResp.User.ID != "" {
+		userID = authResp.User.ID
+		userEmail = authResp.User.Email
+	}
+
+	if userID == "" {
+		fmt.Println("Error: could not parse user ID from response")
+		Error(c, 500, "AUTH_RESPONSE_ERROR")
+		return
+	}
+
 	// 插入 profiles 映射
 	_, err = config.SupabaseDB.Exec(
 		"INSERT INTO profiles (id, user_id, email) VALUES ($1, $2, $3)",
-		authResp.User.ID, req.UserID, req.Email,
+		userID, req.UserID, req.Email, // 使用 email from request 因为 Supabase 可能返回空
 	)
 	if err != nil {
+		fmt.Printf("Error creating profile: %v\n", err)
 		// 回滚：删除 auth user
-		supabaseDeleteUser(authResp.User.ID)
+		supabaseDeleteUser(userID)
 		Error(c, 500, "PROFILE_CREATE_FAILED")
 		return
 	}
 
-	Success(c, gin.H{
+	response := gin.H{
 		"user": gin.H{
-			"id":      authResp.User.ID,
+			"id":      userID,
 			"user_id": req.UserID,
-			"email":   authResp.User.Email,
+			"email":   userEmail,
 		},
-		"session": gin.H{
+	}
+
+	// 如果有 Token，则返回 Session；否则可能需要邮箱验证
+	if authResp.AccessToken != "" {
+		response["session"] = gin.H{
 			"access_token":  authResp.AccessToken,
 			"refresh_token": authResp.RefreshToken,
 			"expires_in":    authResp.ExpiresIn,
-		},
-	})
+		}
+	} else {
+		response["message"] = "Registration successful. Please check your email for verification."
+	}
+
+	Success(c, response)
 }
 
 // Login 登录接口
@@ -200,6 +226,7 @@ func callSupabaseAuth(url string, body map[string]string) (*SupabaseAuthResponse
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
+	fmt.Printf("Supabase response: %s\n", string(respBody))
 
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("supabase error: %s", string(respBody))

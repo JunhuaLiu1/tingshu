@@ -144,7 +144,7 @@ func GetSourceChapters(c *gin.Context) {
 
 func GetSourceAudio(c *gin.Context) {
 	sourceID := c.Param("id")
-	episodeID := c.Param("episodeId")
+	episodeID := strings.TrimPrefix(c.Param("episodeId"), "/")
 	if episodeID == "" {
 		Error(c, http.StatusBadRequest, "Episode id is required")
 		return
@@ -196,6 +196,17 @@ func buildProxyURL(c *gin.Context, sourceID, audioURL string) string {
 	if strings.TrimSpace(sourceID) == "" || strings.TrimSpace(audioURL) == "" {
 		return ""
 	}
+	if !isAllowedSource(sourceID) {
+		return ""
+	}
+	parsed, err := url.Parse(audioURL)
+	if err != nil || parsed.Hostname() == "" {
+		return ""
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if !isAllowedHost(sourceID, host) {
+		return ""
+	}
 
 	scheme := "http"
 	if forwarded := c.GetHeader("X-Forwarded-Proto"); forwarded != "" {
@@ -204,21 +215,21 @@ func buildProxyURL(c *gin.Context, sourceID, audioURL string) string {
 		scheme = "https"
 	}
 
-	host := c.GetHeader("X-Forwarded-Host")
-	if host == "" {
-		host = c.Request.Host
+	serverHost := c.GetHeader("X-Forwarded-Host")
+	if serverHost == "" {
+		serverHost = c.Request.Host
 	}
-	if host != "" {
-		host = strings.TrimSpace(strings.Split(host, ",")[0])
+	if serverHost != "" {
+		serverHost = strings.TrimSpace(strings.Split(serverHost, ",")[0])
 	}
-	if host == "" {
+	if serverHost == "" {
 		return ""
 	}
 
 	return fmt.Sprintf(
 		"%s://%s/api/v1/proxy/audio?source=%s&url=%s",
 		scheme,
-		host,
+		serverHost,
 		url.QueryEscape(sourceID),
 		url.QueryEscape(audioURL),
 	)
