@@ -14,13 +14,13 @@ func SearchBooks(c *gin.Context) {
 		return
 	}
 
-	rows, err := config.SupabaseDB.Query(`
+	rows, err := config.DB.Query(`
 		SELECT id, title, author, description, cover_url, category_id, duration, play_count
 		FROM books
-		WHERE title ILIKE $1 OR author ILIKE $1 OR description ILIKE $1
+		WHERE title LIKE ? OR author LIKE ? OR description LIKE ?
 		ORDER BY play_count DESC
 		LIMIT 50
-	`, "%"+query+"%")
+	`, "%"+query+"%", "%"+query+"%", "%"+query+"%")
 
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Search failed")

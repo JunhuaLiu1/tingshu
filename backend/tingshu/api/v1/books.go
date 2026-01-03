@@ -24,13 +24,13 @@ func GetBooks(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset := (page - 1) * limit
 
-	rows, err := config.SupabaseDB.Query(`
+	rows, err := config.DB.Query(`
 		SELECT id, title, author, description, cover_url, category_id, duration, play_count
 		FROM books
 		ORDER BY play_count DESC
-		LIMIT $1 OFFSET $2
+		LIMIT ? OFFSET ?
 	`, limit, offset)
-	
+
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to fetch books")
 		return
@@ -40,7 +40,7 @@ func GetBooks(c *gin.Context) {
 	var books []Book
 	for rows.Next() {
 		var book Book
-		if err := rows.Scan(&book.ID, &book.Title, &book.Author, &book.Description, 
+		if err := rows.Scan(&book.ID, &book.Title, &book.Author, &book.Description,
 			&book.CoverURL, &book.CategoryID, &book.Duration, &book.PlayCount); err != nil {
 			continue
 		}
@@ -48,7 +48,7 @@ func GetBooks(c *gin.Context) {
 	}
 
 	var total int
-	config.SupabaseDB.QueryRow("SELECT COUNT(*) FROM books").Scan(&total)
+	config.DB.QueryRow("SELECT COUNT(*) FROM books").Scan(&total)
 
 	Success(c, gin.H{
 		"data":      books,
@@ -62,9 +62,9 @@ func GetBookByID(c *gin.Context) {
 	id := c.Param("id")
 
 	var book Book
-	err := config.SupabaseDB.QueryRow(`
+	err := config.DB.QueryRow(`
 		SELECT id, title, author, description, cover_url, category_id, duration, play_count
-		FROM books WHERE id = $1
+		FROM books WHERE id = ?
 	`, id).Scan(&book.ID, &book.Title, &book.Author, &book.Description,
 		&book.CoverURL, &book.CategoryID, &book.Duration, &book.PlayCount)
 
@@ -79,10 +79,10 @@ func GetBookByID(c *gin.Context) {
 func GetBookEpisodes(c *gin.Context) {
 	bookID := c.Param("id")
 
-	rows, err := config.SupabaseDB.Query(`
+	rows, err := config.DB.Query(`
 		SELECT id, book_id, title, audio_url, duration, episode_num, play_count
 		FROM episodes
-		WHERE book_id = $1
+		WHERE book_id = ?
 		ORDER BY episode_num ASC
 	`, bookID)
 

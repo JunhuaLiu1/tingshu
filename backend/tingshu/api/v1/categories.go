@@ -15,7 +15,7 @@ type Category struct {
 }
 
 func GetCategories(c *gin.Context) {
-	rows, err := config.SupabaseDB.Query(`
+	rows, err := config.DB.Query(`
 		SELECT id, name, description, COALESCE(icon_url, '') as icon_url
 		FROM categories
 		ORDER BY id

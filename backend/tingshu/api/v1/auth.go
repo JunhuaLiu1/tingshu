@@ -1,16 +1,13 @@
 package v1
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
+	"database/sql"
 	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/username/tingshu-backend/tingshu/config"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // 请求结构
@@ -23,27 +20,6 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Identifier string `json:"identifier" binding:"required"`
 	Password   string `json:"password" binding:"required"`
-}
-
-// Supabase 响应结构
-type SupabaseAuthResponse struct {
-	AccessToken  string        `json:"access_token"`
-	RefreshToken string        `json:"refresh_token"`
-	ExpiresIn    int           `json:"expires_in"`
-	User         *SupabaseUser `json:"user"`
-	// 兼容直接返回 User 对象的情况
-	ID    string `json:"id"`
-	Email string `json:"email"`
-}
-
-type SupabaseUser struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-}
-
-type SupabaseError struct {
-	Message string `json:"message"`
-	Code    string `json:"code"`
 }
 
 // 验证 userID：必须是 7 位数字
@@ -61,6 +37,18 @@ func isValidPassword(password string) bool {
 	hasDigit, _ := regexp.MatchString(`\d`, password)
 	hasSpecial, _ := regexp.MatchString(`[!@#$%^&*(),.?":{}|<>]`, password)
 	return hasLetter && hasDigit && hasSpecial
+}
+
+// hashPassword 使用 bcrypt 加密密码
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+// checkPassword 验证密码
+func checkPassword(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
 
 // Register 注册接口
@@ -85,7 +73,7 @@ func Register(c *gin.Context) {
 
 	// 检查 userID 是否已存在
 	var existingID string
-	err := config.SupabaseDB.QueryRow("SELECT user_id FROM profiles WHERE user_id = $1", req.UserID).Scan(&existingID)
+	err := config.DB.QueryRow("SELECT user_id FROM profiles WHERE user_id = ?", req.UserID).Scan(&existingID)
 	if err == nil {
 		Error(c, 409, "USER_ID_EXISTS")
 		return
@@ -93,66 +81,39 @@ func Register(c *gin.Context) {
 
 	// 检查 email 是否已存在
 	var existingEmail string
-	err = config.SupabaseDB.QueryRow("SELECT email FROM profiles WHERE email = $1", req.Email).Scan(&existingEmail)
+	err = config.DB.QueryRow("SELECT email FROM profiles WHERE email = ?", req.Email).Scan(&existingEmail)
 	if err == nil {
 		Error(c, 409, "EMAIL_EXISTS")
 		return
 	}
 
-	// 调用 Supabase Auth signUp
-	authResp, err := supabaseSignUp(req.Email, req.Password)
+	// 加密密码
+	passwordHash, err := hashPassword(req.Password)
 	if err != nil {
-		Error(c, 500, "AUTH_CREATE_FAILED")
+		Error(c, 500, "PASSWORD_HASH_FAILED")
 		return
 	}
 
-	// 解析 User ID 和 Email
-	userID := authResp.ID
-	userEmail := authResp.Email
-	if authResp.User != nil && authResp.User.ID != "" {
-		userID = authResp.User.ID
-		userEmail = authResp.User.Email
-	}
-
-	if userID == "" {
-		fmt.Println("Error: could not parse user ID from response")
-		Error(c, 500, "AUTH_RESPONSE_ERROR")
-		return
-	}
-
-	// 插入 profiles 映射
-	_, err = config.SupabaseDB.Exec(
-		"INSERT INTO profiles (id, user_id, email) VALUES ($1, $2, $3)",
-		userID, req.UserID, req.Email, // 使用 email from request 因为 Supabase 可能返回空
+	// 插入 profiles
+	result, err := config.DB.Exec(
+		"INSERT INTO profiles (user_id, email, password_hash) VALUES (?, ?, ?)",
+		req.UserID, req.Email, passwordHash,
 	)
 	if err != nil {
-		fmt.Printf("Error creating profile: %v\n", err)
-		// 回滚：删除 auth user
-		supabaseDeleteUser(userID)
 		Error(c, 500, "PROFILE_CREATE_FAILED")
 		return
 	}
 
-	response := gin.H{
+	id, _ := result.LastInsertId()
+
+	Success(c, gin.H{
 		"user": gin.H{
-			"id":      userID,
+			"id":      id,
 			"user_id": req.UserID,
-			"email":   userEmail,
+			"email":   req.Email,
 		},
-	}
-
-	// 如果有 Token，则返回 Session；否则可能需要邮箱验证
-	if authResp.AccessToken != "" {
-		response["session"] = gin.H{
-			"access_token":  authResp.AccessToken,
-			"refresh_token": authResp.RefreshToken,
-			"expires_in":    authResp.ExpiresIn,
-		}
-	} else {
-		response["message"] = "Registration successful. Please check your email for verification."
-	}
-
-	Success(c, response)
+		"message": "Registration successful.",
+	})
 }
 
 // Login 登录接口
@@ -163,95 +124,56 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	email := req.Identifier
+	var (
+		id           int64
+		userID       string
+		email        string
+		passwordHash string
+	)
 
-	// 如果 identifier 是 7 位数字，查询 profiles 获取 email
+	// 如果 identifier 是 7 位数字，按 user_id 查询
 	if isValidUserID(req.Identifier) {
-		err := config.SupabaseDB.QueryRow("SELECT email FROM profiles WHERE user_id = $1", req.Identifier).Scan(&email)
-		if err != nil {
+		err := config.DB.QueryRow(
+			"SELECT id, user_id, email, password_hash FROM profiles WHERE user_id = ?",
+			req.Identifier,
+		).Scan(&id, &userID, &email, &passwordHash)
+		if err == sql.ErrNoRows {
 			Error(c, 404, "USER_ID_NOT_FOUND")
+			return
+		} else if err != nil {
+			Error(c, 500, "DATABASE_ERROR")
+			return
+		}
+	} else {
+		// 按 email 查询
+		err := config.DB.QueryRow(
+			"SELECT id, user_id, email, password_hash FROM profiles WHERE email = ?",
+			req.Identifier,
+		).Scan(&id, &userID, &email, &passwordHash)
+		if err == sql.ErrNoRows {
+			Error(c, 404, "EMAIL_NOT_FOUND")
+			return
+		} else if err != nil {
+			Error(c, 500, "DATABASE_ERROR")
 			return
 		}
 	}
 
-	// 调用 Supabase Auth signIn
-	authResp, err := supabaseSignIn(email, req.Password)
-	if err != nil {
+	// 验证密码
+	if !checkPassword(req.Password, passwordHash) {
 		Error(c, 401, "AUTH_FAILED")
 		return
 	}
 
-	// 获取 userID
-	var userID string
-	config.SupabaseDB.QueryRow("SELECT user_id FROM profiles WHERE id = $1", authResp.User.ID).Scan(&userID)
-
+	// TODO: 可以在此生成 JWT token
 	Success(c, gin.H{
 		"user": gin.H{
-			"id":      authResp.User.ID,
+			"id":      id,
 			"user_id": userID,
-			"email":   authResp.User.Email,
+			"email":   email,
 		},
-		"session": gin.H{
-			"access_token":  authResp.AccessToken,
-			"refresh_token": authResp.RefreshToken,
-			"expires_in":    authResp.ExpiresIn,
-		},
+		"message": "Login successful.",
 	})
-}
-
-// Supabase Auth API 调用
-func supabaseSignUp(email, password string) (*SupabaseAuthResponse, error) {
-	url := fmt.Sprintf("%s/auth/v1/signup", config.AppConfig.SupabaseURL)
-	body := map[string]string{"email": email, "password": password}
-	return callSupabaseAuth(url, body)
-}
-
-func supabaseSignIn(email, password string) (*SupabaseAuthResponse, error) {
-	url := fmt.Sprintf("%s/auth/v1/token?grant_type=password", config.AppConfig.SupabaseURL)
-	body := map[string]string{"email": email, "password": password}
-	return callSupabaseAuth(url, body)
-}
-
-func callSupabaseAuth(url string, body map[string]string) (*SupabaseAuthResponse, error) {
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", config.AppConfig.SupabaseAnonKey)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Supabase response: %s\n", string(respBody))
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("supabase error: %s", string(respBody))
-	}
-
-	var authResp SupabaseAuthResponse
-	if err := json.Unmarshal(respBody, &authResp); err != nil {
-		return nil, err
-	}
-	return &authResp, nil
-}
-
-func supabaseDeleteUser(userID string) error {
-	url := fmt.Sprintf("%s/auth/v1/admin/users/%s", config.AppConfig.SupabaseURL, userID)
-	req, _ := http.NewRequest("DELETE", url, nil)
-	req.Header.Set("apikey", config.AppConfig.SupabaseServiceKey)
-	req.Header.Set("Authorization", "Bearer "+config.AppConfig.SupabaseServiceKey)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
 }
 
 // 判断是否为邮箱格式
