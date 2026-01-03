@@ -56,7 +56,6 @@ func SetupRoutes() *gin.Engine {
 		v1Group.GET("/users/:userId/history", v1.GetUserHistory)
 
 		// 音频代理
-		v1Group.GET("/proxy/audio", v1.ProxyAudio)
 		v1Group.GET("/proxy/ximalaya", v1.ProxyXimalayaAudio)
 	}
 
