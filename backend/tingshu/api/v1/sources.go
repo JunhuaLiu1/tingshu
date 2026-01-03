@@ -23,6 +23,12 @@ func getSourceManager() *source.Manager {
 		_ = sourceManager.Register(source.NewXimalaya())
 		_ = sourceManager.Register(source.NewKuwo())
 		_ = sourceManager.Register(source.NewHuanting())
+		// 新增5个音源
+		_ = sourceManager.Register(source.NewShuyinfm())
+		_ = sourceManager.Register(source.NewTing78())
+		_ = sourceManager.Register(source.NewTingsm())
+		_ = sourceManager.Register(source.NewLeting8())
+		_ = sourceManager.Register(source.NewMissevan())
 	})
 	return sourceManager
 }

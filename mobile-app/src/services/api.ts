@@ -1,6 +1,6 @@
-import axios, {AxiosResponse} from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {ApiResponse, PaginatedResponse, Book, Category, Ranking, PlayHistory, SearchResult} from '../types';
+import { ApiResponse, PaginatedResponse, Book, Category, Ranking, PlayHistory, SearchResult } from '../types';
 
 // 创建 axios 实例
 const apiClient = axios.create({
@@ -83,6 +83,14 @@ export const searchApi = {
 
 // 音源 API
 export const sourceApi = {
+  // 获取所有音源列表
+  getSources: (): Promise<ApiResponse<any[]>> =>
+    apiClient.get('/sources').then(res => res.data),
+
+  // 全局搜索（聚合所有音源）
+  globalSearch: (keyword: string): Promise<ApiResponse<{ total: number; results: any[] }>> =>
+    apiClient.post(`/global/search?q=${encodeURIComponent(keyword)}`).then(res => res.data),
+
   // 搜索指定音源
   searchSource: (sourceId: string, keyword: string, page: number = 1): Promise<ApiResponse<SearchResult>> =>
     apiClient.get(`/sources/${sourceId}/search?q=${encodeURIComponent(keyword)}&page=${page}`).then(res => res.data),
@@ -92,14 +100,14 @@ export const sourceApi = {
     apiClient.get(`/sources/${sourceId}/books/${encodeURIComponent(bookId)}`).then(res => res.data),
 
   // 获取音频地址
-  getSourceAudio: (sourceId: string, episodeId: string): Promise<ApiResponse<{audio_url: string; audio_proxy_url?: string}>> =>
+  getSourceAudio: (sourceId: string, episodeId: string): Promise<ApiResponse<{ audio_url: string; audio_proxy_url?: string }>> =>
     apiClient.get(`/sources/${sourceId}/audio/${encodeURIComponent(episodeId)}`).then(res => res.data),
 };
 
 // 播放进度 API
 export const playbackApi = {
   // 保存播放进度
-  saveProgress: (data: { book_id: string; episode_id: string; position: number; duration: number }): Promise<ApiResponse<{saved: boolean}>> =>
+  saveProgress: (data: { book_id: string; episode_id: string; position: number; duration: number }): Promise<ApiResponse<{ saved: boolean }>> =>
     apiClient.post('/playback/progress', data).then(res => res.data),
 
   // 获取播放进度
@@ -128,7 +136,7 @@ export const userApi = {
 
 // 健康检查
 export const healthApi = {
-  check: (): Promise<ApiResponse<{status: string; message: string}>> =>
+  check: (): Promise<ApiResponse<{ status: string; message: string }>> =>
     apiClient.get('/health').then(res => res.data),
 };
 

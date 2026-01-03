@@ -124,6 +124,26 @@ export interface SearchResult {
   current_page?: number;
 }
 
+// 音源信息类型
+export interface SourceInfo {
+  id: string;
+  name: string;
+  description: string;
+  base_url: string;
+  version: string;
+  searchable: boolean;
+  has_categories: boolean;
+  enabled: boolean;
+  health_status: string;
+  success_rate: number;
+}
+
+// 全局搜索结果类型
+export interface GlobalSearchResult {
+  total: number;
+  results: Book[];
+}
+
 // 导航类型
 export type RootStackParamList = {
   Main: undefined;
