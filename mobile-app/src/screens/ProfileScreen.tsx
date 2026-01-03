@@ -21,9 +21,11 @@ import { useToast } from '../contexts/ToastContext';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { getAppVersion } from '../utils/appVersion';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProfileScreen: React.FC = () => {
   const { showToast } = useToast();
+  const { user, logout, isLoading: authLoading } = useAuth();
 
   // 使用 Hook 获取用户数据和设置
   const {
@@ -64,15 +66,14 @@ const ProfileScreen: React.FC = () => {
         {
           text: '退出',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await logout();
             showToast({ type: 'success', message: '已退出登录' });
-            console.log('User logged out');
-            // 这里可以添加实际的退出逻辑
           }
         },
       ]
     );
-  }, [showToast]);
+  }, [showToast, logout]);
 
   // 清除缓存
   const handleClearCache = useCallback(() => {
@@ -118,13 +119,13 @@ const ProfileScreen: React.FC = () => {
         source={{ uri: profile?.avatar || 'https://picsum.photos/200/200?random=avatar' }}
         style={styles.avatar}
       />
-      <Text style={styles.username}>{profile?.username || '用户'}</Text>
-      <Text style={styles.email}>{profile?.email || ''}</Text>
+      <Text style={styles.username}>{user?.user_id || profile?.username || '用户'}</Text>
+      <Text style={styles.email}>{user?.email || profile?.email || ''}</Text>
       <Text style={styles.joinDate}>
         加入时间: {profile ? formatDate(profile.created_at) : ''}
       </Text>
     </View>
-  ), [profile, formatDate]);
+  ), [profile, user, formatDate]);
 
   // 渲染统计信息
   const renderStatsSection = useCallback(() => (
@@ -210,9 +211,9 @@ const ProfileScreen: React.FC = () => {
       title="未登录"
       subtitle="请先登录以查看个人中心"
       actionText="去登录"
-      onActionPress={() => showToast({ type: 'info', message: '登录功能开发中' })}
+      onActionPress={() => router.push('/(auth)/login')}
     />
-  ), [showToast]);
+  ), []);
 
   // 渲染加载状态
   const renderLoadingState = useCallback(() => (
@@ -222,7 +223,7 @@ const ProfileScreen: React.FC = () => {
   ), []);
 
   // 如果正在加载
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <SafeAreaView style={layoutStyles.safeArea}>
         <View style={styles.container}>
@@ -244,7 +245,7 @@ const ProfileScreen: React.FC = () => {
   }
 
   // 如果未登录
-  if (!profile) {
+  if (!user) {
     return (
       <SafeAreaView style={layoutStyles.safeArea}>
         <View style={styles.container}>

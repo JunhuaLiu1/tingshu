@@ -41,6 +41,15 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Auth API
+export const authApi = {
+  register: (data: { user_id: string; email: string; password: string }): Promise<ApiResponse<any>> =>
+    apiClient.post('/auth/register', data).then(res => res.data),
+
+  login: (data: { identifier: string; password: string }): Promise<ApiResponse<any>> =>
+    apiClient.post('/auth/login', data).then(res => res.data),
+};
+
 // 书籍 API
 export const bookApi = {
   // 获取书籍列表
