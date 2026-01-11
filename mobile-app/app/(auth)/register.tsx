@@ -115,6 +115,8 @@ export default function RegisterScreen() {
             onChangeText={setUserId}
             keyboardType="number-pad"
             maxLength={7}
+            autoCorrect={false}
+            spellCheck={false}
           />
 
           <TextInput
@@ -125,6 +127,10 @@ export default function RegisterScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            autoCorrect={false}
+            spellCheck={false}
+            textContentType="emailAddress"
+            autoComplete="email"
           />
 
           <TextInput
@@ -134,8 +140,10 @@ export default function RegisterScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            textContentType="none"
-            autoComplete="off"
+            autoCorrect={false}
+            spellCheck={false}
+            textContentType="newPassword"
+            autoComplete="new-password"
           />
 
           <TextInput
@@ -145,8 +153,10 @@ export default function RegisterScreen() {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
-            textContentType="none"
-            autoComplete="off"
+            autoCorrect={false}
+            spellCheck={false}
+            textContentType="newPassword"
+            autoComplete="new-password"
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}

@@ -22,7 +22,7 @@ func InitMySQL() error {
 		AppConfig.MySQLDatabase,
 	)
 
-	log.Printf("MySQL connecting to %s@%s:%s/%s", AppConfig.MySQLUser, AppConfig.MySQLHost, AppConfig.MySQLPort, AppConfig.MySQLDatabase)
+	log.Printf("MySQL connecting")
 
 	var err error
 	DB, err = sql.Open("mysql", dsn)

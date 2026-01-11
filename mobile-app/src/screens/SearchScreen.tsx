@@ -38,6 +38,10 @@ const SOURCE_NAMES: Record<string, string> = {
   leting8: '乐听吧',
   missevan: '猫耳FM',
 };
+const SOURCE_ORDER = [
+  'ximalaya',
+  ...Object.keys(SOURCE_NAMES).filter((id) => id !== 'ximalaya'),
+];
 
 const getPlayCount = (item: Book) => {
   if (typeof item.play_count === 'number') return item.play_count;
@@ -111,11 +115,16 @@ const SearchScreen: React.FC = () => {
           grouped[sid].push(book);
         });
         // 转换为分组数组
-        const groupedArr: GroupedResult[] = Object.entries(grouped).map(([sourceId, books]) => ({
+        const groupedKeys = Object.keys(grouped);
+        const orderedKeys = [
+          ...SOURCE_ORDER.filter((id) => grouped[id]),
+          ...groupedKeys.filter((id) => !SOURCE_ORDER.includes(id)),
+        ];
+        const groupedArr: GroupedResult[] = orderedKeys.map((sourceId) => ({
           sourceId,
           sourceName: SOURCE_NAMES[sourceId] || sourceId,
-          books: books.slice(0, MAX_ITEMS_PER_SOURCE),
-          hasMore: books.length > MAX_ITEMS_PER_SOURCE,
+          books: grouped[sourceId].slice(0, MAX_ITEMS_PER_SOURCE),
+          hasMore: grouped[sourceId].length > MAX_ITEMS_PER_SOURCE,
         }));
         setGroupedResults(groupedArr);
         setSearchResults(results);
@@ -394,14 +403,14 @@ const SearchScreen: React.FC = () => {
         {/* 单源选择器 */}
         {searchMode === 'single' && (
           <View style={styles.sourceSelector}>
-            {Object.entries(SOURCE_NAMES).map(([id, name]) => (
+            {SOURCE_ORDER.map((id) => (
               <TouchableOpacity
                 key={id}
                 style={[styles.sourceChip, selectedSource === id && styles.sourceChipActive]}
                 onPress={() => { setSelectedSource(id); setSearchResults([]); }}
               >
                 <Text style={[styles.sourceChipText, selectedSource === id && styles.sourceChipTextActive]}>
-                  {name}
+                  {SOURCE_NAMES[id] || id}
                 </Text>
               </TouchableOpacity>
             ))}

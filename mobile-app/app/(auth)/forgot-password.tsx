@@ -137,6 +137,10 @@ export default function ForgotPasswordScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            autoCorrect={false}
+            spellCheck={false}
+            textContentType="emailAddress"
+            autoComplete="email"
           />
 
           <View style={styles.codeRow}>
@@ -148,6 +152,10 @@ export default function ForgotPasswordScreen() {
               onChangeText={setCode}
               keyboardType="number-pad"
               maxLength={6}
+              autoCorrect={false}
+              spellCheck={false}
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
             />
             <TouchableOpacity
               style={[styles.codeButton, sendingCode && styles.buttonDisabled]}
@@ -170,8 +178,10 @@ export default function ForgotPasswordScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            textContentType="none"
-            autoComplete="off"
+            autoCorrect={false}
+            spellCheck={false}
+            textContentType="newPassword"
+            autoComplete="new-password"
           />
 
           <TextInput
@@ -181,8 +191,10 @@ export default function ForgotPasswordScreen() {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
-            textContentType="none"
-            autoComplete="off"
+            autoCorrect={false}
+            spellCheck={false}
+            textContentType="newPassword"
+            autoComplete="new-password"
           />
 
           {info ? <Text style={styles.info}>{info}</Text> : null}

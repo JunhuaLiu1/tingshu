@@ -38,13 +38,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
       if (stored) {
-        const { user, session } = JSON.parse(stored);
-        setUser(user);
-        setSession(session);
-        await AsyncStorage.setItem('auth_token', session.access_token);
+        const parsed = JSON.parse(stored);
+        const storedUser = parsed?.user;
+        const storedSession = parsed?.session;
+
+        const accessToken = storedSession?.access_token;
+        if (storedUser && storedSession && typeof accessToken === 'string' && accessToken.length > 0) {
+          setUser(storedUser);
+          setSession(storedSession);
+          await AsyncStorage.setItem('auth_token', accessToken);
+        } else {
+          // 兼容旧版本/损坏数据：避免启动时崩溃
+          await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+          await AsyncStorage.removeItem('auth_token');
+        }
       }
     } catch (e) {
       console.error('Failed to load auth:', e);
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      await AsyncStorage.removeItem('auth_token');
     } finally {
       setIsLoading(false);
     }

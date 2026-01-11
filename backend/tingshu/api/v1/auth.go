@@ -7,13 +7,17 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/username/tingshu-backend/tingshu/config"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+const jwtExpiresInSeconds = 7 * 24 * 3600
 
 var (
 	profilesIDModeOnce sync.Once
@@ -149,11 +153,22 @@ func Register(c *gin.Context) {
 		}
 	}
 
+	token, expiresIn, err := generateJWTToken(id, req.UserID, req.Email)
+	if err != nil {
+		Error(c, 500, "AUTH_TOKEN_FAILED")
+		return
+	}
+
 	Success(c, gin.H{
 		"user": gin.H{
 			"id":      id,
 			"user_id": req.UserID,
 			"email":   req.Email,
+		},
+		"session": gin.H{
+			"access_token":  token,
+			"refresh_token": "",
+			"expires_in":    expiresIn,
 		},
 		"message": "Registration successful.",
 	})
@@ -236,15 +251,54 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// TODO: 可以在此生成 JWT token
+	token, expiresIn, err := generateJWTToken(fmt.Sprintf("%d", id), userID, email)
+	if err != nil {
+		Error(c, 500, "AUTH_TOKEN_FAILED")
+		return
+	}
+
 	Success(c, gin.H{
 		"user": gin.H{
 			"id":      id,
 			"user_id": userID,
 			"email":   email,
 		},
+		"session": gin.H{
+			"access_token":  token,
+			"refresh_token": "",
+			"expires_in":    expiresIn,
+		},
 		"message": "Login successful.",
 	})
+}
+
+func generateJWTToken(profileID string, userID string, email string) (string, int, error) {
+	secret := ""
+	if config.AppConfig != nil {
+		secret = strings.TrimSpace(config.AppConfig.JWTSecret)
+	}
+	if secret == "" {
+		return "", 0, errors.New("JWT_SECRET is empty")
+	}
+
+	expiresIn := jwtExpiresInSeconds
+	now := time.Now()
+	claims := jwt.MapClaims{
+		"sub":      profileID,
+		"user_id":  userID,
+		"email":    email,
+		"iat":      now.Unix(),
+		"exp":      now.Add(time.Duration(expiresIn) * time.Second).Unix(),
+		"iss":      "tingshu-backend",
+		"token_ver": 1,
+	}
+
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := t.SignedString([]byte(secret))
+	if err != nil {
+		return "", 0, err
+	}
+	return signed, expiresIn, nil
 }
 
 // 判断是否为邮箱格式
