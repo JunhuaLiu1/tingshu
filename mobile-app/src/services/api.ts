@@ -48,6 +48,12 @@ export const authApi = {
 
   login: (data: { identifier: string; password: string }): Promise<ApiResponse<any>> =>
     apiClient.post('/auth/login', data).then(res => res.data),
+
+  requestPasswordReset: (data: { email: string }): Promise<ApiResponse<any>> =>
+    apiClient.post('/auth/password/reset/request', data).then(res => res.data),
+
+  confirmPasswordReset: (data: { email: string; code: string; password: string }): Promise<ApiResponse<any>> =>
+    apiClient.post('/auth/password/reset/confirm', data).then(res => res.data),
 };
 
 // 书籍 API

@@ -1,13 +1,24 @@
 package v1
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"sync"
 	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/username/tingshu-backend/tingshu/config"
 	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	profilesIDModeOnce sync.Once
+	profilesIDMode     string
+	profilesIDModeErr  error
 )
 
 // 请求结构
@@ -78,12 +89,20 @@ func Register(c *gin.Context) {
 		Error(c, 409, "USER_ID_EXISTS")
 		return
 	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		Error(c, 500, "DATABASE_ERROR")
+		return
+	}
 
 	// 检查 email 是否已存在
 	var existingEmail string
 	err = config.DB.QueryRow("SELECT email FROM profiles WHERE email = ?", req.Email).Scan(&existingEmail)
 	if err == nil {
 		Error(c, 409, "EMAIL_EXISTS")
+		return
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		Error(c, 500, "DATABASE_ERROR")
 		return
 	}
 
@@ -94,17 +113,41 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// 插入 profiles
-	result, err := config.DB.Exec(
-		"INSERT INTO profiles (user_id, email, password_hash) VALUES (?, ?, ?)",
-		req.UserID, req.Email, passwordHash,
-	)
+	insertMode, err := getProfilesIDMode()
 	if err != nil {
-		Error(c, 500, "PROFILE_CREATE_FAILED")
+		Error(c, 500, "DATABASE_ERROR")
 		return
 	}
 
-	id, _ := result.LastInsertId()
+	var id string
+	if insertMode == "auto" {
+		// id is auto-increment (default schema)
+		if _, err := config.DB.Exec(
+			"INSERT INTO profiles (user_id, email, password_hash) VALUES (?, ?, ?)",
+			req.UserID, req.Email, passwordHash,
+		); err != nil {
+			Error(c, 500, "PROFILE_CREATE_FAILED")
+			return
+		}
+		if err := config.DB.QueryRow("SELECT id FROM profiles WHERE user_id = ?", req.UserID).Scan(&id); err != nil {
+			Error(c, 500, "DATABASE_ERROR")
+			return
+		}
+	} else {
+		// id has no default (e.g., UUID/string schema) -> generate one.
+		id, err = generateRandomID()
+		if err != nil {
+			Error(c, 500, "PROFILE_CREATE_FAILED")
+			return
+		}
+		if _, err := config.DB.Exec(
+			"INSERT INTO profiles (id, user_id, email, password_hash) VALUES (?, ?, ?, ?)",
+			id, req.UserID, req.Email, passwordHash,
+		); err != nil {
+			Error(c, 500, "PROFILE_CREATE_FAILED")
+			return
+		}
+	}
 
 	Success(c, gin.H{
 		"user": gin.H{
@@ -114,6 +157,34 @@ func Register(c *gin.Context) {
 		},
 		"message": "Registration successful.",
 	})
+}
+
+func getProfilesIDMode() (string, error) {
+	profilesIDModeOnce.Do(func() {
+		var extra sql.NullString
+		err := config.DB.QueryRow(
+			"SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND COLUMN_NAME = 'id'",
+		).Scan(&extra)
+		if err != nil {
+			profilesIDModeErr = err
+			return
+		}
+		if extra.Valid && strings.Contains(strings.ToLower(extra.String), "auto_increment") {
+			profilesIDMode = "auto"
+			return
+		}
+		profilesIDMode = "manual"
+	})
+	return profilesIDMode, profilesIDModeErr
+}
+
+func generateRandomID() (string, error) {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	// 32-char hex string
+	return fmt.Sprintf("%s", hex.EncodeToString(buf)), nil
 }
 
 // Login 登录接口

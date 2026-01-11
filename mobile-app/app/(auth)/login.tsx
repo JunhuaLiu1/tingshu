@@ -3,6 +3,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  View,
   StyleSheet,
   SafeAreaView,
   KeyboardAvoidingView,
@@ -10,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { tokens } from '../../src/theme/tokens';
 import { authApi } from '../../src/services/api';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -18,6 +20,7 @@ export default function LoginScreen() {
   const { login } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -63,24 +66,41 @@ export default function LoginScreen() {
         <Text style={styles.title}>登录</Text>
         <Text style={styles.subtitle}>使用用户ID或邮箱登录</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="用户ID (7位数字) 或 邮箱"
-          placeholderTextColor={tokens.colors.text.tertiary}
-          value={identifier}
-          onChangeText={setIdentifier}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="用户ID (7位数字) 或 邮箱"
+            placeholderTextColor={tokens.colors.text.tertiary}
+            value={identifier}
+            onChangeText={setIdentifier}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="密码"
-          placeholderTextColor={tokens.colors.text.tertiary}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, styles.passwordInput]}
+            placeholder="密码"
+            placeholderTextColor={tokens.colors.text.tertiary}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!isPasswordVisible}
+          />
+          <TouchableOpacity
+            style={styles.passwordToggle}
+            onPress={() => setIsPasswordVisible(prev => !prev)}
+            activeOpacity={tokens.opacity.active}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? '隐藏密码' : '显示密码'}
+          >
+            <MaterialIcons
+              name={isPasswordVisible ? 'visibility-off' : 'visibility'}
+              size={20}
+              color={tokens.colors.text.secondary}
+            />
+          </TouchableOpacity>
+        </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -94,6 +114,10 @@ export default function LoginScreen() {
           ) : (
             <Text style={styles.buttonText}>登录</Text>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
+          <Text style={styles.forgotText}>忘记密码？</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
@@ -137,9 +161,22 @@ const styles = StyleSheet.create({
     padding: tokens.spacing.md,
     fontSize: tokens.typography.body,
     color: tokens.colors.text.primary,
-    marginBottom: tokens.spacing.md,
     borderWidth: 1,
     borderColor: tokens.colors.border.default,
+  },
+  inputContainer: {
+    marginBottom: tokens.spacing.md,
+  },
+  passwordInput: {
+    paddingRight: tokens.spacing.xxl,
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: tokens.spacing.sm,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    paddingHorizontal: tokens.spacing.sm,
   },
   error: {
     color: tokens.colors.semantic.error,
@@ -161,6 +198,12 @@ const styles = StyleSheet.create({
     color: tokens.colors.text.inverse,
     fontSize: tokens.typography.body,
     fontWeight: tokens.fontWeight.semibold,
+  },
+  forgotText: {
+    color: tokens.colors.text.secondary,
+    fontSize: tokens.typography.caption,
+    textAlign: 'center',
+    marginTop: tokens.spacing.md,
   },
   link: {
     color: tokens.colors.primary,
