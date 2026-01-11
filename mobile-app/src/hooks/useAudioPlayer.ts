@@ -3,6 +3,7 @@ import { Audio, AVPlaybackStatus } from 'expo-av';
 import { audioCache } from '../services/audioCache';
 import { sourceApi, playbackApi } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { savePlayHistoryItem } from './usePlayHistory';
 
 export interface PlaybackState {
   status: 'idle' | 'loading' | 'playing' | 'paused' | 'error';
@@ -25,12 +26,17 @@ export interface Episode {
 interface UseAudioPlayerOptions {
   sourceId: string;
   bookId: string;
+  bookMetadata?: {
+    title: string;
+    author: string;
+    coverUrl: string;
+  };
   onError?: (error: string) => void;
 }
 
 const PROGRESS_KEY_PREFIX = 'playback_progress_';
 
-export function useAudioPlayer({ sourceId, bookId, onError }: UseAudioPlayerOptions) {
+export function useAudioPlayer({ sourceId, bookId, bookMetadata, onError }: UseAudioPlayerOptions) {
   const [state, setState] = useState<PlaybackState>({
     status: 'idle',
     currentTime: 0,
@@ -40,7 +46,7 @@ export function useAudioPlayer({ sourceId, bookId, onError }: UseAudioPlayerOpti
   });
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  
+
   const soundRef = useRef<Audio.Sound | null>(null);
   const progressSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -80,7 +86,7 @@ export function useAudioPlayer({ sourceId, bookId, onError }: UseAudioPlayerOpti
         position,
         duration,
       });
-    } catch {}
+    } catch { }
   }, [currentEpisode, bookId]);
 
   const loadSavedProgress = async (episodeId: string): Promise<number> => {
@@ -91,7 +97,7 @@ export function useAudioPlayer({ sourceId, bookId, onError }: UseAudioPlayerOpti
         const { position } = JSON.parse(data);
         return position || 0;
       }
-    } catch {}
+    } catch { }
     return 0;
   };
 
@@ -160,7 +166,7 @@ export function useAudioPlayer({ sourceId, bookId, onError }: UseAudioPlayerOpti
         }
         const { sound } = await Audio.Sound.createAsync(
           { uri: localUrl },
-          { shouldPlay: false, progressUpdateIntervalMillis: 500 },
+          { shouldPlay: true, progressUpdateIntervalMillis: 500 },
           onPlaybackStatusUpdate
         );
         soundRef.current = sound;
@@ -181,6 +187,22 @@ export function useAudioPlayer({ sourceId, bookId, onError }: UseAudioPlayerOpti
       const savedPosition = await loadSavedProgress(episode.id);
       if (savedPosition > 0 && soundRef.current) {
         await soundRef.current.setPositionAsync(savedPosition * 1000);
+      }
+
+      // Save to play history (one record per source+book)
+      if (bookMetadata) {
+        savePlayHistoryItem({
+          id: `${sourceId || 'local'}_${bookId}`,
+          bookId,
+          title: bookMetadata.title,
+          author: bookMetadata.author,
+          coverUrl: bookMetadata.coverUrl,
+          progress: savedPosition > 0 && episode.duration > 0 ? Math.round((savedPosition / episode.duration) * 100) : 0,
+          duration: episode.duration,
+          episodeId: episode.id,
+          episodeTitle: episode.title,
+          sourceId,
+        });
       }
 
       setState(s => ({ ...s, status: 'paused' }));

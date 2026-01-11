@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 
 interface AuthUser {
   id: string;
@@ -70,6 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Stop any playing audio
+    try {
+      await Audio.setIsEnabledAsync(false);
+      await Audio.setIsEnabledAsync(true);
+    } catch (e) {
+      console.warn('Failed to stop audio on logout:', e);
+    }
     setUser(null);
     setSession(null);
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);

@@ -36,6 +36,9 @@ export interface Book {
   playCount?: string; // 前端格式：显示用
   source_id?: string; // 后端格式
   sourceId?: string; // 前端格式
+  status?: string;
+  chapter_count?: number; // 后端格式
+  chapterCount?: number; // 前端格式
   category_id?: number;
   category?: string; // 前端格式：分类名称
   episodes?: Episode[];

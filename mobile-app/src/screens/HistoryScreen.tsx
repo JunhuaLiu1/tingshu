@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Book } from '../types';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
@@ -35,6 +35,13 @@ const HistoryScreen: React.FC = () => {
 
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent');
+
+  // Reload history when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [loadHistory])
+  );
 
   // 下拉刷新
   const onRefresh = useCallback(async () => {
@@ -217,22 +224,29 @@ const HistoryScreen: React.FC = () => {
           {item.author}
         </Text>
 
+        {/* Episode info */}
+        {(item as any).episodeTitle && (
+          <Text style={styles.episodeInfo} numberOfLines={1}>
+            播放至: {(item as any).episodeTitle}
+          </Text>
+        )}
+
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
             <View
               style={[
                 styles.progressFill,
-                { width: `${item.progress}%` }
+                { width: `${Math.min(item.progress, 100)}%` }
               ]}
             />
           </View>
           <Text style={styles.progressText}>
-            {item.progress}% · {formatDuration(item.duration)}
+            进度 {item.progress}%
           </Text>
         </View>
 
         <Text style={styles.historyTime}>
-          上次播放: {formatTimeAgo(item.lastPlayed)}
+          {formatTimeAgo(item.lastPlayed)}
         </Text>
       </View>
 
@@ -419,6 +433,11 @@ const styles = StyleSheet.create({
   historyAuthor: {
     fontSize: tokens.typography.caption,
     color: tokens.colors.text.secondary,
+    marginBottom: 4,
+  },
+  episodeInfo: {
+    fontSize: tokens.typography.small,
+    color: tokens.colors.primary,
     marginBottom: tokens.spacing.sm,
   },
   progressContainer: {

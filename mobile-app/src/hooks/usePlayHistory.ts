@@ -1,19 +1,70 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { historyApi } from '../services/api';
 
 const PLAY_HISTORY_KEY = 'play_history';
 
 export interface PlayHistoryItem {
   id: string;
-  bookId: number;
+  bookId: number | string;
   title: string;
   author: string;
   coverUrl: string;
   progress: number;      // 播放进度百分比 0-100
   duration: number;      // 总时长（秒）
   lastPlayed: Date;      // 最后播放时间
-  episodeId?: number;    // 可选：集数ID
+  episodeId?: number | string;    // 可选：集数ID
+  episodeTitle?: string;
+  sourceId?: string;
 }
+
+// Standalone function to save play history (can be called from anywhere)
+export const savePlayHistoryItem = async (item: Omit<PlayHistoryItem, 'lastPlayed'>): Promise<void> => {
+  try {
+    // Save to local AsyncStorage
+    const data = await AsyncStorage.getItem(PLAY_HISTORY_KEY);
+    let items: PlayHistoryItem[] = data ? JSON.parse(data) : [];
+
+    // Remove any existing records for the same source+book (deduplication)
+    const sourceBookKey = `${item.sourceId || 'local'}_${item.bookId}`;
+    items = items.filter(i => {
+      const existingKey = `${i.sourceId || 'local'}_${i.bookId}`;
+      return existingKey !== sourceBookKey;
+    });
+
+    // Add the new/updated record at the beginning
+    items.unshift({
+      ...item,
+      id: sourceBookKey,
+      lastPlayed: new Date()
+    });
+
+    // Limit to 50 records
+    items = items.slice(0, 50);
+
+    await AsyncStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(items));
+
+    // Sync to backend database
+    try {
+      await historyApi.saveHistory({
+        source_id: item.sourceId,
+        book_id: String(item.bookId),
+        title: item.title,
+        author: item.author,
+        cover_url: item.coverUrl,
+        episode_id: item.episodeId ? String(item.episodeId) : undefined,
+        episode_title: item.episodeTitle,
+        progress: item.progress,
+        duration: item.duration,
+      });
+    } catch (apiErr) {
+      // Don't fail if API sync fails, local storage is already updated
+      console.warn('Failed to sync history to backend:', apiErr);
+    }
+  } catch (err) {
+    console.error('Failed to save play history:', err);
+  }
+};
 
 interface UsePlayHistoryReturn {
   history: PlayHistoryItem[];

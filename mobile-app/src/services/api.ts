@@ -130,6 +130,35 @@ export const playbackApi = {
     apiClient.get(`/playback/progress?book_id=${bookId}${episodeId ? `&episode_id=${episodeId}` : ''}`).then(res => res.data),
 };
 
+// 播放历史 API
+export const historyApi = {
+  // 保存播放历史
+  saveHistory: (data: {
+    source_id?: string;
+    book_id: string;
+    title: string;
+    author: string;
+    cover_url: string;
+    episode_id?: string;
+    episode_title?: string;
+    progress: number;
+    duration: number;
+  }): Promise<ApiResponse<any>> =>
+    apiClient.post('/history', data).then(res => res.data),
+
+  // 获取播放历史列表
+  getHistory: (): Promise<ApiResponse<any[]>> =>
+    apiClient.get('/history').then(res => res.data),
+
+  // 删除单条历史
+  deleteHistory: (id: string): Promise<ApiResponse<any>> =>
+    apiClient.delete(`/history/${id}`).then(res => res.data),
+
+  // 清空所有历史
+  clearHistory: (): Promise<ApiResponse<any>> =>
+    apiClient.delete('/history').then(res => res.data),
+};
+
 // 用户 API（预留）
 export const userApi = {
   // 获取用户档案

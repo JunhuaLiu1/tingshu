@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/username/tingshu-backend/tingshu/api/v1"
+	v1 "github.com/username/tingshu-backend/tingshu/api/v1"
 	"github.com/username/tingshu-backend/tingshu/middleware"
 )
 
@@ -54,6 +54,12 @@ func SetupRoutes() *gin.Engine {
 		v1Group.POST("/playback/progress", v1.SavePlaybackProgress)
 		v1Group.GET("/playback/progress", v1.GetPlaybackProgress)
 		v1Group.GET("/users/:userId/history", v1.GetUserHistory)
+
+		// 播放历史（需要认证）
+		v1Group.POST("/history", middleware.Auth(), v1.SaveHistory)
+		v1Group.GET("/history", middleware.Auth(), v1.GetHistory)
+		v1Group.DELETE("/history/:id", middleware.Auth(), v1.DeleteHistory)
+		v1Group.DELETE("/history", middleware.Auth(), v1.ClearHistory)
 
 		// 音频代理
 		v1Group.GET("/proxy/ximalaya", v1.ProxyXimalayaAudio)

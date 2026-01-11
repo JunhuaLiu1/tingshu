@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,10 @@ import {
   Alert,
   SafeAreaView,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { User } from '../types';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
 import CachedImage from '../components/common/CachedImage';
@@ -26,8 +26,6 @@ import { useAuth } from '../contexts/AuthContext';
 const ProfileScreen: React.FC = () => {
   const { showToast } = useToast();
   const { user, logout, isLoading: authLoading } = useAuth();
-
-  // 使用 Hook 获取用户数据和设置
   const {
     profile,
     stats,
@@ -84,8 +82,6 @@ const ProfileScreen: React.FC = () => {
         style: 'destructive',
         onPress: () => {
           showToast({ type: 'success', message: '缓存已清除' });
-          console.log('Cache cleared');
-          // 这里可以添加实际的清除缓存逻辑
         }
       },
     ]);
@@ -103,66 +99,30 @@ const ProfileScreen: React.FC = () => {
 
   // 菜单项点击处理
   const handleMenuPress = useCallback((screen: string) => {
-    // 检查屏幕是否存在，如果不存在则显示提示
-    const availableScreens = ['ProfileEdit', 'Favorites', 'Downloads', 'Feedback', 'Help'];
-    if (availableScreens.includes(screen)) {
-      showToast({ type: 'info', message: '功能开发中' });
-    } else {
-      showToast({ type: 'info', message: '功能开发中' });
-    }
+    showToast({ type: 'info', message: '功能开发中' });
   }, [showToast]);
-
-  // 渲染用户信息头部
-  const renderProfileHeader = useCallback(() => (
-    <View style={styles.profileHeader}>
-      <CachedImage
-        source={{ uri: profile?.avatar || 'https://picsum.photos/200/200?random=avatar' }}
-        style={styles.avatar}
-      />
-      <Text style={styles.username}>{user?.user_id || profile?.username || '用户'}</Text>
-      <Text style={styles.email}>{user?.email || profile?.email || ''}</Text>
-      <Text style={styles.joinDate}>
-        加入时间: {profile ? formatDate(profile.created_at) : ''}
-      </Text>
-    </View>
-  ), [profile, user, formatDate]);
-
-  // 渲染统计信息
-  const renderStatsSection = useCallback(() => (
-    <View style={styles.statsSection}>
-      <View style={styles.statItem}>
-        <Text style={styles.statNumber}>{stats?.booksPlayed || 0}</Text>
-        <Text style={styles.statLabel}>已听书籍</Text>
-      </View>
-      <View style={styles.statItem}>
-        <Text style={styles.statNumber}>{stats?.totalHours || 0}</Text>
-        <Text style={styles.statLabel}>听书时长(小时)</Text>
-      </View>
-      <View style={styles.statItem}>
-        <Text style={styles.statNumber}>{stats?.favorites || 0}</Text>
-        <Text style={styles.statLabel}>收藏书籍</Text>
-      </View>
-    </View>
-  ), [stats]);
 
   // 渲染菜单项
   const renderMenuItem = useCallback((
     icon: string,
     title: string,
     subtitle?: string,
-    onPress?: () => void
+    onPress?: () => void,
+    isLast: boolean = false
   ) => (
     <TouchableOpacity
-      style={styles.menuItem}
+      style={[styles.menuItem, isLast && styles.menuItemLast]}
       onPress={onPress}
-      activeOpacity={tokens.opacity.active}
+      activeOpacity={0.7}
     >
-      <MaterialIcons name={icon} size={24} color={tokens.colors.text.secondary} />
+      <View style={styles.menuIconContainer}>
+        <MaterialIcons name={icon as any} size={22} color={tokens.colors.primary} />
+      </View>
       <View style={styles.menuContent}>
         <Text style={styles.menuTitle}>{title}</Text>
         {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
       </View>
-      <MaterialIcons name="chevron-right" size={24} color={tokens.colors.text.tertiary} />
+      <MaterialIcons name="chevron-right" size={20} color={tokens.colors.text.tertiary} />
     </TouchableOpacity>
   ), []);
 
@@ -171,95 +131,63 @@ const ProfileScreen: React.FC = () => {
     icon: string,
     title: string,
     value: boolean,
-    onValueChange: (value: boolean) => void
+    onValueChange: (value: boolean) => void,
+    isLast: boolean = false
   ) => (
-    <View style={styles.menuItem}>
-      <MaterialIcons name={icon} size={24} color={tokens.colors.text.secondary} />
+    <View style={[styles.menuItem, isLast && styles.menuItemLast]}>
+      <View style={styles.menuIconContainer}>
+        <MaterialIcons name={icon as any} size={22} color={tokens.colors.primary} />
+      </View>
       <Text style={styles.menuTitle}>{title}</Text>
       <Switch
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: tokens.colors.border.default, true: tokens.colors.primary }}
-        thumbColor={tokens.colors.surface}
+        thumbColor={Platform.OS === 'ios' ? '#fff' : tokens.colors.surface}
+        style={{ transform: [{ scale: 0.8 }] }}
       />
     </View>
   ), []);
 
   // 渲染分组
   const renderSection = useCallback((title: string, children: React.ReactNode) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionHeader}>{title}</Text>
+      <View style={styles.cardContainer}>
+        {children}
+      </View>
     </View>
   ), []);
 
-  // 渲染错误状态
-  const renderErrorState = useCallback(() => (
-    <EmptyState
-      icon="error-outline"
-      title="加载失败"
-      subtitle={error || '加载用户资料失败'}
-      actionText="重试"
-      onActionPress={loadProfile}
-    />
-  ), [error, loadProfile]);
-
-  // 渲染未登录状态
-  const renderNotLoginState = useCallback(() => (
-    <EmptyState
-      icon="person-outline"
-      title="未登录"
-      subtitle="请先登录以查看个人中心"
-      actionText="去登录"
-      onActionPress={() => router.push('/(auth)/login')}
-    />
-  ), []);
-
-  // 渲染加载状态
-  const renderLoadingState = useCallback(() => (
-    <View style={styles.loadingContainer}>
-      <Text style={styles.loadingText}>加载中...</Text>
-    </View>
-  ), []);
-
-  // 如果正在加载
   if (isLoading || authLoading) {
     return (
-      <SafeAreaView style={layoutStyles.safeArea}>
-        <View style={styles.container}>
-          {renderLoadingState()}
-        </View>
-      </SafeAreaView>
+      <View style={styles.centerContainer}>
+        <Text style={styles.loadingText}>加载中...</Text>
+      </View>
     );
   }
 
-  // 如果有错误
-  if (error) {
-    return (
-      <SafeAreaView style={layoutStyles.safeArea}>
-        <View style={styles.container}>
-          {renderErrorState()}
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // 如果未登录
   if (!user) {
     return (
-      <SafeAreaView style={layoutStyles.safeArea}>
-        <View style={styles.container}>
-          {renderNotLoginState()}
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centerContainer}>
+          <EmptyState
+            icon="person-outline"
+            title="未登录"
+            subtitle="请先登录以查看个人中心"
+            actionText="去登录"
+            onActionPress={() => router.push('/(auth)/login')}
+          />
         </View>
       </SafeAreaView>
     );
   }
 
-  // 正常渲染
   return (
-    <SafeAreaView style={layoutStyles.safeArea}>
+    <View style={styles.container}>
       <ScrollView
-        style={styles.container}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -270,55 +198,82 @@ const ProfileScreen: React.FC = () => {
           />
         }
       >
-        {/* 用户信息头部 */}
-        {renderProfileHeader()}
+        {/* 顶部背景 */}
+        <View style={styles.headerBackground} />
 
-        {/* 统计信息 */}
-        {renderStatsSection()}
+        {/* 用户信息卡片 */}
+        <SafeAreaView style={{ paddingTop: Platform.OS === 'android' ? 40 : 0 }}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarContainer}>
+              <CachedImage
+                source={{ uri: profile?.avatar || 'https://picsum.photos/200/200?random=avatar' }}
+                style={styles.avatar}
+              />
+              <View style={styles.editBadge}>
+                <MaterialIcons name="edit" size={12} color="#fff" />
+              </View>
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.username}>{user?.user_id || profile?.username || '用户'}</Text>
+              <Text style={styles.joinDate}>
+                {profile ? `加入时间 ${formatDate(profile.created_at)}` : ' '}
+              </Text>
+            </View>
+          </View>
 
-        {/* 个人信息设置 */}
-        {renderSection('个人设置', (
-          <>
-            {renderMenuItem('person', '编辑资料', profile.username, () => handleMenuPress('ProfileEdit'))}
-            {renderMenuItem('account-circle' as any, '账号管理', '设置登录密码', () => handleMenuPress('ProfileEdit'))}
-            {renderMenuItem('notifications', '消息通知',
-              stats?.messages ? `你有${stats.messages}条新消息` : '暂无新消息',
-              () => handleMenuPress('ProfileEdit')
-            )}
-          </>
-        ))}
+          {/* 统计数据卡片 */}
+          <View style={styles.statsCard}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats?.booksPlayed || 0}</Text>
+              <Text style={styles.statLabel}>已听书籍</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{Math.round((stats?.totalHours || 0) * 10) / 10}</Text>
+              <Text style={styles.statLabel}>听书时长(h)</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats?.favorites || 0}</Text>
+              <Text style={styles.statLabel}>收藏书籍</Text>
+            </View>
+          </View>
+        </SafeAreaView>
 
-        {/* 播放设置 */}
-        {renderSection('播放设置', (
-          <>
-            {renderSettingsItem('play-arrow' as any, '自动播放下一集', settings.autoPlay, (value) => updateSettings({ autoPlay: value }))}
-            {renderSettingsItem('wifi', '仅WiFi下下载', settings.downloadOnlyWifi, (value) => updateSettings({ downloadOnlyWifi: value }))}
-            {renderSettingsItem('notifications', '推送通知', settings.notifications, (value) => updateSettings({ notifications: value }))}
-          </>
-        ))}
+        {/* 菜单区域 */}
+        <View style={styles.menuContainer}>
+          {renderSection('个人设置', (
+            <>
+              {renderMenuItem('person', '编辑资料', profile?.username, () => handleMenuPress('ProfileEdit'))}
+              {renderMenuItem('lock', '账号管理', '修改密码', () => handleMenuPress('ProfileEdit'), true)}
+            </>
+          ))}
 
-        {/* 其他功能 */}
-        {renderSection('其他', (
-          <>
-            {renderMenuItem('favorite', '我的收藏', `${stats?.favorites || 0}本书籍`, () => handleMenuPress('Favorites'))}
-            {renderMenuItem('download', '下载管理', `${stats?.downloads || 0}个文件`, () => handleMenuPress('Downloads'))}
-            {renderMenuItem('history', '清除缓存', stats?.cacheSize || '缓存大小', handleClearCache)}
-            {renderMenuItem('feedback', '意见反馈', undefined, () => handleMenuPress('Feedback'))}
-            {renderMenuItem('info', '关于我们', `版本 ${getAppVersion()}`, () => handleMenuPress('Help'))}
-            {renderMenuItem('help', '帮助与支持', undefined, () => handleMenuPress('Help'))}
-          </>
-        ))}
+          {renderSection('播放设置', (
+            <>
+              {renderSettingsItem('play-arrow', '自动播放下一集', settings.autoPlay, (v) => updateSettings({ autoPlay: v }))}
+              {renderSettingsItem('wifi', '仅WiFi下下载', settings.downloadOnlyWifi, (v) => updateSettings({ downloadOnlyWifi: v }))}
+              {renderSettingsItem('notifications', '推送通知', settings.notifications, (v) => updateSettings({ notifications: v }), true)}
+            </>
+          ))}
 
-        {/* 退出登录按钮 */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          activeOpacity={tokens.opacity.active}
-        >
-          <Text style={styles.logoutText}>退出登录</Text>
-        </TouchableOpacity>
+          {renderSection('其他', (
+            <>
+              {renderMenuItem('file-download', '下载管理', `${stats?.downloads || 0}个文件`, () => handleMenuPress('Downloads'))}
+              {renderMenuItem('cleaning-services', '清除缓存', stats?.cacheSize || '缓存大小', handleClearCache)}
+              {renderMenuItem('feedback', '意见反馈', undefined, () => handleMenuPress('Feedback'))}
+              {renderMenuItem('info', '关于我们', `v${getAppVersion()}`, () => handleMenuPress('Help'), true)}
+            </>
+          ))}
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutText}>退出登录</Text>
+          </TouchableOpacity>
+
+          <View style={styles.footerSpace} />
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -327,26 +282,74 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: tokens.colors.background,
   },
-  loadingContainer: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: tokens.colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: tokens.colors.background,
   },
   loadingText: {
-    fontSize: tokens.typography.body,
     color: tokens.colors.text.secondary,
+    marginTop: tokens.spacing.md,
+  },
+
+  // Header Style
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    backgroundColor: 'rgba(255, 107, 53, 0.08)', // Primary color subtle tint
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
   profileHeader: {
     alignItems: 'center',
-    backgroundColor: tokens.colors.surface,
-    padding: tokens.spacing.lg,
-    paddingTop: tokens.spacing.xxl,
+    paddingTop: tokens.spacing.xl,
+    paddingBottom: tokens.spacing.lg,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: tokens.spacing.md,
+    shadowColor: tokens.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: tokens.radius.full,
-    marginBottom: tokens.spacing.md,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 3,
+    borderColor: tokens.colors.surface,
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: tokens.colors.primary,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: tokens.colors.surface,
+  },
+  userInfo: {
+    alignItems: 'center',
   },
   username: {
     fontSize: tokens.typography.h2,
@@ -354,84 +357,116 @@ const styles = StyleSheet.create({
     color: tokens.colors.text.primary,
     marginBottom: 4,
   },
-  email: {
-    fontSize: tokens.typography.caption,
-    color: tokens.colors.text.secondary,
-    marginBottom: 4,
-  },
   joinDate: {
     fontSize: tokens.typography.small,
     color: tokens.colors.text.tertiary,
   },
-  statsSection: {
+
+  // Stats Card
+  statsCard: {
     flexDirection: 'row',
     backgroundColor: tokens.colors.surface,
-    marginTop: tokens.spacing.md,
+    marginHorizontal: tokens.spacing.lg,
+    marginTop: tokens.spacing.sm,
     paddingVertical: tokens.spacing.lg,
+    borderRadius: tokens.radius.lg,
+    ...tokens.shadows.md,
+    alignItems: 'center',
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: tokens.typography.h1,
+    fontSize: 20,
     fontWeight: tokens.fontWeight.bold,
-    color: tokens.colors.primary,
+    color: tokens.colors.text.primary,
     marginBottom: 4,
+    fontVariant: ['tabular-nums'],
   },
   statLabel: {
-    fontSize: tokens.typography.small,
+    fontSize: 12,
     color: tokens.colors.text.secondary,
-    textAlign: 'center',
   },
-  section: {
-    marginTop: tokens.spacing.lg,
-    backgroundColor: tokens.colors.surface,
-    paddingHorizontal: tokens.spacing.md,
-    paddingVertical: tokens.spacing.sm,
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: tokens.colors.border.light,
   },
-  sectionTitle: {
-    fontSize: tokens.typography.body,
+
+  // Menu Sections
+  menuContainer: {
+    padding: tokens.spacing.lg,
+  },
+  sectionContainer: {
+    marginBottom: tokens.spacing.lg,
+  },
+  sectionHeader: {
+    fontSize: 13,
     fontWeight: tokens.fontWeight.semibold,
-    color: tokens.colors.text.primary,
+    color: tokens.colors.text.tertiary,
     marginBottom: tokens.spacing.sm,
-    marginTop: tokens.spacing.md,
+    marginLeft: tokens.spacing.xs,
+  },
+  cardContainer: {
+    backgroundColor: tokens.colors.surface,
+    borderRadius: tokens.radius.lg,
+    ...tokens.shadows.sm,
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: tokens.spacing.md,
-    borderBottomWidth: 1,
+    padding: tokens.spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: tokens.colors.border.light,
+    height: 56,
+  },
+  menuItemLast: {
+    borderBottomWidth: 0,
+  },
+  menuIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 107, 53, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   menuContent: {
     flex: 1,
-    marginLeft: tokens.spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginRight: 8,
   },
   menuTitle: {
     fontSize: tokens.typography.body,
     color: tokens.colors.text.primary,
+    flex: 1,
   },
   menuSubtitle: {
-    fontSize: tokens.typography.small,
+    fontSize: 13,
     color: tokens.colors.text.tertiary,
-    marginTop: 2,
   },
-  logoutButton: {
-    margin: tokens.spacing.lg,
-    marginVertical: tokens.spacing.xxl,
-    backgroundColor: tokens.colors.surface,
-    padding: tokens.spacing.md,
-    borderRadius: tokens.radius.sm,
+
+  // Logout Button
+  logoutBtn: {
+    marginTop: tokens.spacing.md,
+    marginHorizontal: tokens.spacing.md,
+    paddingVertical: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: tokens.colors.primary,
+    justifyContent: 'center',
   },
   logoutText: {
+    color: tokens.colors.text.tertiary,
     fontSize: tokens.typography.body,
-    color: tokens.colors.primary,
-    fontWeight: tokens.fontWeight.semibold,
+    fontWeight: tokens.fontWeight.medium,
   },
+  footerSpace: {
+    height: 40,
+  }
 });
 
 export default ProfileScreen;
