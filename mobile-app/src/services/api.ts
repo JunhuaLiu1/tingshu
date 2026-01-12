@@ -104,11 +104,13 @@ export const sourceApi = {
 
   // 全局搜索（聚合所有音源）
   globalSearch: (keyword: string): Promise<ApiResponse<{ total: number; results: any[] }>> =>
-    apiClient.post(`/global/search?q=${encodeURIComponent(keyword)}`).then(res => res.data),
+    apiClient.post(`/global/search?q=${encodeURIComponent(keyword)}`, null, { timeout: 20000 }).then(res => res.data),
 
   // 搜索指定音源
   searchSource: (sourceId: string, keyword: string, page: number = 1): Promise<ApiResponse<SearchResult>> =>
-    apiClient.get(`/sources/${sourceId}/search?q=${encodeURIComponent(keyword)}&page=${page}`).then(res => res.data),
+    apiClient
+      .get(`/sources/${sourceId}/search?q=${encodeURIComponent(keyword)}&page=${page}`, { timeout: 20000 })
+      .then(res => res.data),
 
   // 获取音源书籍详情
   getSourceBookDetail: (sourceId: string, bookId: string): Promise<ApiResponse<Book>> =>

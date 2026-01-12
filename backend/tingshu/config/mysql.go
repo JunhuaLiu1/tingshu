@@ -7,10 +7,15 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 // DB 全局数据库连接
 var DB *sql.DB
+
+// GormDB 全局 GORM 数据库连接
+var GormDB *gorm.DB
 
 // InitMySQL 初始化MySQL连接
 func InitMySQL() error {
@@ -44,7 +49,20 @@ func InitMySQL() error {
 		return err
 	}
 
+	// 初始化 GORM
+	GormDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return fmt.Errorf("failed to connect to MySQL with GORM: %w", err)
+	}
+
+	log.Println("GORM MySQL connected successfully")
+
 	return nil
+}
+
+// GetGormDB 获取 GORM 数据库实例
+func GetGormDB() *gorm.DB {
+	return GormDB
 }
 
 func ensureProfilesSchema(db *sql.DB) error {
