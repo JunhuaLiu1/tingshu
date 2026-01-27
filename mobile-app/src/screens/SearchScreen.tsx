@@ -11,7 +11,7 @@ import {
   SectionList,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Book, SourceInfo } from '../types';
+import { Book } from '../types';
 import { sourceApi } from '../services/api';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
@@ -200,15 +200,6 @@ const SearchScreen: React.FC = () => {
     setCurrentPage(1);
     handleSingleSourceSearch(1);
   }, [handleSingleSourceSearch]);
-
-  // 切换搜索模式
-  const toggleSearchMode = useCallback(() => {
-    const newMode = searchMode === 'global' ? 'single' : 'global';
-    setSearchMode(newMode);
-    setSearchResults([]);
-    setGroupedResults([]);
-    setCurrentPage(1);
-  }, [searchMode]);
 
   const getItemLayout = useCallback((_data: ArrayLike<Book> | null | undefined, index: number) => ({
     length: ITEM_HEIGHT,

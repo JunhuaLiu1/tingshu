@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import Toast from '../components/common/Toast';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 export type ToastPosition = 'top' | 'center' | 'bottom';
@@ -55,6 +56,3 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     </ToastContext.Provider>
   );
 };
-
-// Toast 组件将在下一个文件中定义
-import Toast from '../components/common/Toast';

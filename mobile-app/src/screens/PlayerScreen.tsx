@@ -7,7 +7,6 @@ import {
   ScrollView,
   Dimensions,
   SafeAreaView,
-  Platform,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -68,7 +67,6 @@ const PlayerScreen: React.FC = () => {
   const {
     state: playbackState,
     currentEpisode,
-    downloadProgress,
     loadEpisode,
     togglePlayPause,
     seekTo,
@@ -147,7 +145,7 @@ const PlayerScreen: React.FC = () => {
       }
     };
     loadDetail();
-  }, [bookId, sourceId]);
+  }, [bookId, sourceId, loadEpisode, showToast]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

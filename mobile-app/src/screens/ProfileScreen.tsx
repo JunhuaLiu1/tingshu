@@ -14,7 +14,6 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { tokens } from '../theme/tokens';
-import { layoutStyles } from '../theme/styles';
 import CachedImage from '../components/common/CachedImage';
 import EmptyState from '../components/common/EmptyState';
 import { useToast } from '../contexts/ToastContext';
@@ -30,7 +29,6 @@ const ProfileScreen: React.FC = () => {
     profile,
     stats,
     isLoading,
-    error,
     loadProfile,
   } = useUserProfile();
 
@@ -48,6 +46,7 @@ const ProfileScreen: React.FC = () => {
       await loadProfile();
       showToast({ type: 'success', message: '已刷新' });
     } catch (err) {
+      console.error('Failed to refresh profile:', err);
       showToast({ type: 'error', message: '刷新失败' });
     } finally {
       setRefreshing(false);
