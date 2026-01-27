@@ -6,12 +6,9 @@ import {
   FlatList,
   Image,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
-import {EDITORS_PICKS, getBookCoverUrl, getBookPlayCount} from '../data/mockData';
-
-const {width} = Dimensions.get('window');
+import {EDITORS_PICKS, getBookCoverUrl} from '../data/mockData';
 
 const EditorsPick: React.FC = () => {
   const renderBookItem = ({item}: any) => (

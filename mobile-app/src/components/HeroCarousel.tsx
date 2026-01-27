@@ -7,7 +7,6 @@ import {
   Image,
   StyleSheet,
   Dimensions,
-  Animated,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { HERO_BOOKS, getBookCoverUrl } from "../data/mockData";

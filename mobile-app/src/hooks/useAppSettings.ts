@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const APP_SETTINGS_KEY = 'app_settings';
+const DEFAULT_SETTINGS: AppSettings = {
+  notifications: true,
+  autoPlay: true,
+  downloadOnlyWifi: false,
+};
 
 // 应用设置接口
 export interface AppSettings {
@@ -23,19 +28,8 @@ interface UseAppSettingsReturn {
  * 管理应用设置并自动持久化到 AsyncStorage
  */
 export const useAppSettings = (): UseAppSettingsReturn => {
-  const [settings, setSettings] = useState<AppSettings>({
-    notifications: true,
-    autoPlay: true,
-    downloadOnlyWifi: false,
-  });
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
-
-  // 默认设置
-  const defaultSettings: AppSettings = {
-    notifications: true,
-    autoPlay: true,
-    downloadOnlyWifi: false,
-  };
 
   // 加载设置
   const loadSettings = useCallback(async () => {
@@ -44,12 +38,12 @@ export const useAppSettings = (): UseAppSettingsReturn => {
       if (data) {
         const parsed = JSON.parse(data);
         setSettings({
-          ...defaultSettings,
+          ...DEFAULT_SETTINGS,
           ...parsed,
         });
       } else {
         // 首次使用，保存默认设置
-        await AsyncStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(defaultSettings));
+        await AsyncStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
       }
     } catch (err) {
       console.error('Failed to load app settings:', err);
@@ -79,8 +73,8 @@ export const useAppSettings = (): UseAppSettingsReturn => {
   // 重置设置
   const resetSettings = useCallback(async () => {
     try {
-      setSettings(defaultSettings);
-      await AsyncStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(defaultSettings));
+      setSettings(DEFAULT_SETTINGS);
+      await AsyncStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
     } catch (err) {
       console.error('Failed to reset app settings:', err);
       throw err;

@@ -3,19 +3,10 @@
  * 动态获取应用版本号
  */
 
-// 检查是否在 Expo 环境中
-let version = '1.0.0';
+import Constants from 'expo-constants';
 
-try {
-  // 尝试从 expo-constants 获取版本
-  const Constants = require('expo-constants');
-  if (Constants?.expoConfig?.version) {
-    version = Constants.expoConfig.version;
-  }
-} catch (err) {
-  // 如果不在 Expo 环境中，使用默认版本
-  console.log('expo-constants not available, using default version');
-}
+// 检查是否在 Expo 环境中
+const version = Constants?.expoConfig?.version || '1.0.0';
 
 /**
  * 获取应用版本号

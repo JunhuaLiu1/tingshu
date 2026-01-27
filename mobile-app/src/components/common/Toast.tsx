@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,8 +20,8 @@ interface ToastProps {
 }
 
 const Toast: React.FC<ToastProps> = ({ type, message, position, onHide }) => {
-  const opacity = new Animated.Value(0);
-  const translateY = new Animated.Value(position === 'top' ? -50 : 50);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(position === 'top' ? -50 : 50)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -36,7 +36,7 @@ const Toast: React.FC<ToastProps> = ({ type, message, position, onHide }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [opacity, translateY]);
 
   const getIcon = () => {
     switch (type) {

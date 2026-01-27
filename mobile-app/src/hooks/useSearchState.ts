@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SEARCH_HISTORY_KEY = 'search_history';
-const HOT_SEARCHES_KEY = 'hot_searches';
 
 export interface SearchSuggestion {
   text: string;
@@ -81,10 +80,12 @@ export const useSearchState = () => {
   // 生成搜索建议
   const generateSuggestions = useCallback((query: string): SearchSuggestion[] => {
     if (!query.trim()) {
-      return [
+      const nextSuggestions = [
         ...hotSearches.slice(0, 5).map(text => ({ text, type: 'hot' as const })),
         ...searchHistory.slice(0, 3).map(text => ({ text, type: 'history' as const }))
       ];
+      setSuggestions(nextSuggestions);
+      return nextSuggestions;
     }
 
     const suggestions: SearchSuggestion[] = [];
@@ -115,7 +116,9 @@ export const useSearchState = () => {
       suggestions.push(...additional);
     }
 
-    return suggestions.slice(0, 5);
+    const nextSuggestions = suggestions.slice(0, 5);
+    setSuggestions(nextSuggestions);
+    return nextSuggestions;
   }, [hotSearches, searchHistory]);
 
   // 初始化

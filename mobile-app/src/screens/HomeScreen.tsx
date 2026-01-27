@@ -1,6 +1,5 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect} from 'react';
 import {
-  View,
   Text,
   ScrollView,
   StyleSheet,
@@ -9,8 +8,6 @@ import {
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import {MaterialIcons} from '@expo/vector-icons';
-import {Book, Category} from '../types';
-import {CATEGORIES, HERO_BOOKS, EDITORS_PICKS, RANKING_BOOKS} from '../data/mockData';
 import HeroCarousel from '../components/HeroCarousel';
 import CategoryTabs from '../components/CategoryTabs';
 import EditorsPick from '../components/EditorsPick';
@@ -19,7 +16,6 @@ import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
 
 const HomeScreen: React.FC = () => {
-  const [, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {

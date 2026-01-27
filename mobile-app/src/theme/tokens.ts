@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 export const tokens = {
   // 颜色系统
   colors: {
