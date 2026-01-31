@@ -2,6 +2,12 @@ import axios, { AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiResponse, PaginatedResponse, Book, Category, Ranking, PlayHistory, SearchResult } from '../types';
 
+function encodePathPreserveSlash(value: string): string {
+  // encodeURIComponent 会把 "/" 编码成 "%2F"，但后端路由使用了 Gin 的通配符参数 *episodeId
+  // 需要保留 "/" 作为路径分隔符，否则后端拿到的 episodeId 会被破坏
+  return encodeURIComponent(value).replaceAll('%2F', '/');
+}
+
 // 创建 axios 实例
 const apiClient = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1',
@@ -118,7 +124,7 @@ export const sourceApi = {
 
   // 获取音频地址
   getSourceAudio: (sourceId: string, episodeId: string): Promise<ApiResponse<{ audio_url: string; audio_proxy_url?: string }>> =>
-    apiClient.get(`/sources/${sourceId}/audio/${encodeURIComponent(episodeId)}`).then(res => res.data),
+    apiClient.get(`/sources/${sourceId}/audio/${encodePathPreserveSlash(episodeId)}`).then(res => res.data),
 };
 
 // 播放进度 API

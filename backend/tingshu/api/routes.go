@@ -25,6 +25,15 @@ func SetupRoutes() *gin.Engine {
 	// API v1 路由组
 	v1Group := router.Group("/api/v1")
 	{
+		// 健康检查（v1）
+		// 前端默认 baseURL = .../api/v1，因此需要提供 /api/v1/health
+		v1Group.GET("/health", func(c *gin.Context) {
+			Success(c, gin.H{
+				"status":  "ok",
+				"message": "Tingshu API is running",
+			})
+		})
+
 		// 书籍相关
 		v1Group.GET("/books", v1.GetBooks)
 		v1Group.GET("/books/:id", v1.GetBookByID)
