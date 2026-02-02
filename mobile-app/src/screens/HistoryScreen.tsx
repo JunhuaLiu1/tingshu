@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { Book } from '../types';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
 import EmptyState from '../components/common/EmptyState';
@@ -50,7 +49,7 @@ const HistoryScreen: React.FC = () => {
     try {
       await loadHistory();
       showToast({ type: 'success', message: '已刷新' });
-    } catch (err) {
+    } catch {
       showToast({ type: 'error', message: '刷新失败' });
     } finally {
       setRefreshing(false);
@@ -71,7 +70,7 @@ const HistoryScreen: React.FC = () => {
             try {
               await clearHistory();
               showToast({ type: 'success', message: '已清除播放历史' });
-            } catch (err) {
+            } catch {
               showToast({ type: 'error', message: '清除失败' });
             }
           }
@@ -90,7 +89,7 @@ const HistoryScreen: React.FC = () => {
           try {
             await removeHistory(item.id);
             showToast({ type: 'success', message: '已删除' });
-          } catch (err) {
+          } catch {
             showToast({ type: 'error', message: '删除失败' });
           }
         }
@@ -126,7 +125,7 @@ const HistoryScreen: React.FC = () => {
           try {
             await removeHistory(item.id);
             showToast({ type: 'success', message: '已删除' });
-          } catch (err) {
+          } catch {
             showToast({ type: 'error', message: '删除失败' });
           }
         }
@@ -150,17 +149,6 @@ const HistoryScreen: React.FC = () => {
   }, []);
 
   // 格式化时长
-  const formatDuration = useCallback((seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-
-    if (hours > 0) {
-      return `${hours}小时${minutes}分钟`;
-    }
-    return `${minutes}分钟`;
-  }, []);
-
-  // 排序逻辑
   const sortedHistory = useMemo(() => {
     const sorted = [...history];
     switch (sortBy) {
@@ -217,14 +205,23 @@ const HistoryScreen: React.FC = () => {
     <TouchableOpacity
       style={styles.historyItem}
       activeOpacity={tokens.opacity.active}
-      onPress={() => router.push({
-        pathname: '/player',
-        params: {
-          bookId: item.bookId.toString(),
-          episodeId: item.episodeId?.toString(),
-          progress: item.progress.toString()
-        }
-      })}
+      onPress={() => {
+        const bookId = item.bookId.toString();
+        const episodeId = item.episodeId ? item.episodeId.toString() : undefined;
+        const sourceId = item.sourceId || '';
+        router.push({
+          pathname: '/player',
+          params: {
+            bookId,
+            sourceId,
+            title: item.title,
+            author: item.author,
+            coverUrl: item.coverUrl,
+            episodeId,
+            progress: item.progress.toString(),
+          }
+        });
+      }}
       onLongPress={() => handleLongPress(item)}
     >
       <CachedImage source={{ uri: item.coverUrl }} style={styles.historyCover} />
@@ -270,7 +267,7 @@ const HistoryScreen: React.FC = () => {
         <MaterialIcons name="more-vert" size={20} color={tokens.colors.text.tertiary} />
       </TouchableOpacity>
     </TouchableOpacity>
-  ), [handleLongPress, handleMorePress, formatDuration, formatTimeAgo]);
+  ), [handleLongPress, handleMorePress, formatTimeAgo]);
 
   // 渲染错误状态
   const renderErrorState = useCallback(() => (

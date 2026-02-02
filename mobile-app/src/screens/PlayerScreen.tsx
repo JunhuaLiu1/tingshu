@@ -49,12 +49,15 @@ const PlayerScreen: React.FC = () => {
     title?: string;
     author?: string;
     coverUrl?: string;
+    episodeId?: string;
+    progress?: string;
   }>();
   const bookId = typeof params.bookId === 'string' ? params.bookId : '';
   const sourceId = typeof params.sourceId === 'string' ? params.sourceId : '';
   const fallbackTitle = typeof params.title === 'string' ? params.title : '';
   const fallbackAuthor = typeof params.author === 'string' ? params.author : '';
   const fallbackCoverUrl = typeof params.coverUrl === 'string' ? params.coverUrl : '';
+  const initialEpisodeId = typeof params.episodeId === 'string' ? params.episodeId : '';
 
   const [book, setBook] = useState<Book | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -108,7 +111,10 @@ const PlayerScreen: React.FC = () => {
             setEpisodes(list);
             setEpisodePage(1);
             if (list.length > 0) {
-              loadEpisode(list[0]);
+              const targetEpisode = initialEpisodeId
+                ? list.find(ep => ep.id === initialEpisodeId) || list[0]
+                : list[0];
+              loadEpisode(targetEpisode);
             } else {
               showToast({ type: 'warning', message: '暂无可播放章节' });
             }
@@ -137,7 +143,10 @@ const PlayerScreen: React.FC = () => {
             setEpisodes(list);
             setEpisodePage(1);
             if (list.length > 0) {
-              loadEpisode(list[0]);
+              const targetEpisode = initialEpisodeId
+                ? list.find(ep => ep.id === initialEpisodeId) || list[0]
+                : list[0];
+              loadEpisode(targetEpisode);
             }
           }
         }
@@ -148,7 +157,7 @@ const PlayerScreen: React.FC = () => {
       }
     };
     loadDetail();
-  }, [bookId, sourceId]);
+  }, [bookId, sourceId, initialEpisodeId, showToast]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
