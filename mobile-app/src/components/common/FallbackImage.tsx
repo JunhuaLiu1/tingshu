@@ -32,6 +32,22 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
     const [loadState, setLoadState] = useState<LoadState>('loading');
     const [currentUri, setCurrentUri] = useState<string>(uri);
 
+    const safeLogProxyTarget = useCallback((proxyUrl: string) => {
+        if (!__DEV__) return;
+        try {
+            const u = new URL(proxyUrl);
+            const target = u.searchParams.get('url');
+            if (!target) {
+                console.log('[FallbackImage] Direct load failed, trying proxy');
+                return;
+            }
+            const tu = new URL(target);
+            console.log(`[FallbackImage] Direct load failed, trying proxy (targetHost=${tu.host})`);
+        } catch {
+            console.log('[FallbackImage] Direct load failed, trying proxy');
+        }
+    }, []);
+
     // 获取代理 URL
     const getProxyUrl = useCallback((): string | null => {
         if (proxyUri) return proxyUri;
@@ -45,7 +61,7 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
             // 直连失败，尝试代理
             const proxy = getProxyUrl();
             if (proxy) {
-                console.log(`[FallbackImage] Direct load failed, trying proxy: ${proxy.substring(0, 80)}...`);
+                safeLogProxyTarget(proxy);
                 setCurrentUri(proxy);
                 setLoadState('proxy');
                 return;
@@ -53,9 +69,9 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
         }
 
         // 代理也失败，显示占位图
-        console.log(`[FallbackImage] All attempts failed, showing placeholder`);
+        if (__DEV__) console.log('[FallbackImage] All attempts failed, showing placeholder');
         setLoadState('fallback');
-    }, [loadState, getProxyUrl]);
+    }, [loadState, getProxyUrl, safeLogProxyTarget]);
 
     // 处理图片加载成功
     const handleLoad = useCallback(() => {
