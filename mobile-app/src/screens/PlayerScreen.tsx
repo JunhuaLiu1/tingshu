@@ -215,7 +215,7 @@ const PlayerScreen: React.FC = () => {
 
   const displayTitle = book?.title || fallbackTitle || '未知书名';
   const displayAuthor = book?.author || fallbackAuthor || '未知作者';
-  const displayCoverUrl = book?.cover_url || book?.coverUrl || fallbackCoverUrl || 'https://picsum.photos/600/600?random=1';
+  const displayCoverUrl = book?.cover_url || book?.coverUrl || fallbackCoverUrl || '';
   const isFavorite = isFavorited(sourceId, bookId);
   const sourceLabel = sourceId ? (SOURCE_NAMES[sourceId] || sourceId) : '本地书库';
   const episodeCountFromBook = Math.max(

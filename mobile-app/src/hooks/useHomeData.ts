@@ -6,26 +6,47 @@ import { HERO_BOOKS, EDITORS_PICKS, RANKING_BOOKS } from '../data/mockData';
 // 首页数据模式：backend = 从后端获取真实数据，mock = 使用本地 mock 数据
 const HOME_DATA_MODE = process.env.EXPO_PUBLIC_HOME_DATA_MODE || 'backend';
 
-// 首页各分区使用的搜索关键词
-const HOME_KEYWORDS = {
-    hero: '热门小说',
-    editors_picks: '经典文学',
-    rankings: '排行榜',
+const SECTION_LIMITS = {
+    hero: 3,
+    editors_picks: 6,
+    rankings: 10,
+} as const;
+
+// 首页各分区使用的搜索关键词（按优先级顺序）
+const HOME_KEYWORDS: Record<keyof typeof SECTION_LIMITS, string[]> = {
+    hero: ['热门', '热门小说', '推荐', '畅销'],
+    editors_picks: ['经典文学', '经典', '名著', '文学'],
+    rankings: ['排行榜', '热榜', '完结', '热门'],
 };
 
 // 生成图片代理 URL
 export const buildImageProxyUrl = (sourceId: string, imageUrl: string): string => {
     if (!sourceId || !imageUrl) return '';
-    const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    const baseUrl = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
     return `${baseUrl}/proxy/audio?source=${encodeURIComponent(sourceId)}&url=${encodeURIComponent(imageUrl)}`;
+};
+
+const getBookKey = (book: Book): string => {
+    const id = String(book.id ?? '').trim();
+    const sourceId = String(book.source_id || book.sourceId || '').trim();
+    if (!id || !sourceId) return '';
+    return `${sourceId}:${id}`;
+};
+
+const withTimestamps = (book: Book): Book => ({
+    ...book,
+    created_at: book.created_at || new Date().toISOString(),
+    updated_at: book.updated_at || new Date().toISOString(),
+});
+
+const sortByPlayCountDesc = (books: Book[]): Book[] => {
+    return [...books].sort((a, b) => (Number(b.play_count || 0) - Number(a.play_count || 0)));
 };
 
 // 将后端 Book 转换为 BookWithStats（用于 HeroCarousel）
 const toBookWithStats = (book: Book, index: number): BookWithStats => ({
-    ...book,
+    ...withTimestamps(book),
     id: typeof book.id === 'string' ? parseInt(book.id, 10) || index + 1 : book.id,
-    created_at: book.created_at || new Date().toISOString(),
-    updated_at: book.updated_at || new Date().toISOString(),
     stats: {
         playCount: book.play_count
             ? (book.play_count >= 10000 ? `${(book.play_count / 10000).toFixed(1)}万` : `${book.play_count}`)
@@ -36,11 +57,9 @@ const toBookWithStats = (book: Book, index: number): BookWithStats => ({
 
 // 将后端 Book 转换为排行榜格式
 const toRankingBook = (book: Book, index: number): Book => ({
-    ...book,
+    ...withTimestamps(book),
     id: typeof book.id === 'string' ? parseInt(book.id, 10) || index + 1 : book.id,
     rank: index + 1,
-    created_at: book.created_at || new Date().toISOString(),
-    updated_at: book.updated_at || new Date().toISOString(),
 });
 
 interface UseHomeDataReturn {
@@ -70,52 +89,64 @@ export const useHomeData = (): UseHomeDataReturn => {
             setIsLoading(true);
             setError(null);
 
-            // 并行请求三个分区的数据
-            const [heroRes, editorsRes, rankingsRes] = await Promise.allSettled([
-                sourceApi.globalSearch(HOME_KEYWORDS.hero),
-                sourceApi.globalSearch(HOME_KEYWORDS.editors_picks),
-                sourceApi.globalSearch(HOME_KEYWORDS.rankings),
+            const usedKeys = new Set<string>();
+
+            const collectSection = async (section: keyof typeof SECTION_LIMITS): Promise<Book[]> => {
+                const collected: Book[] = [];
+                for (const keyword of HOME_KEYWORDS[section]) {
+                    if (collected.length >= SECTION_LIMITS[section]) break;
+                    let results: Book[] = [];
+                    try {
+                        const res = await sourceApi.globalSearch(keyword);
+                        results = res.data?.results || [];
+                    } catch {
+                        if (__DEV__) {
+                            console.log(`[useHomeData] globalSearch failed: section=${section}, keyword=${keyword}`);
+                        }
+                        continue;
+                    }
+
+                    for (const book of sortByPlayCountDesc(results)) {
+                        if (collected.length >= SECTION_LIMITS[section]) break;
+                        const key = getBookKey(book);
+                        if (!key || usedKeys.has(key)) continue;
+                        usedKeys.add(key);
+                        collected.push(withTimestamps(book));
+                    }
+                }
+                return collected;
+            };
+
+            const [heroRaw, editorsRaw, rankingsRaw] = await Promise.all([
+                collectSection('hero'),
+                collectSection('editors_picks'),
+                collectSection('rankings'),
             ]);
 
-            // 处理轮播图数据
-            if (heroRes.status === 'fulfilled' && heroRes.value.data?.results) {
-                const books = heroRes.value.data.results.slice(0, 5).map(toBookWithStats);
-                setHeroBooks(books.length > 0 ? books : HERO_BOOKS);
-            } else {
-                console.warn('Hero books fetch failed, using mock data');
-                setHeroBooks(HERO_BOOKS);
+            const hero = heroRaw.map((b, i) => toBookWithStats(b, i));
+            const editors = editorsRaw.map((book, i) => ({
+                ...withTimestamps(book),
+                id: typeof book.id === 'string' ? parseInt(book.id, 10) || i + 1 : book.id,
+            }));
+            const rankings = rankingsRaw.map((b, i) => toRankingBook(b, i));
+
+            const anyBackendData = hero.length > 0 || editors.length > 0 || rankings.length > 0;
+
+            if (!anyBackendData) {
+                setError('首页数据加载失败，已降级为离线数据');
             }
 
-            // 处理编辑推荐数据
-            if (editorsRes.status === 'fulfilled' && editorsRes.value.data?.results) {
-                const books = editorsRes.value.data.results.slice(0, 6).map((book, i) => ({
-                    ...book,
-                    id: typeof book.id === 'string' ? parseInt(book.id, 10) || i + 1 : book.id,
-                    created_at: book.created_at || new Date().toISOString(),
-                    updated_at: book.updated_at || new Date().toISOString(),
-                }));
-                setEditorsPicks(books.length > 0 ? books : EDITORS_PICKS);
-            } else {
-                console.warn('Editors picks fetch failed, using mock data');
-                setEditorsPicks(EDITORS_PICKS);
-            }
-
-            // 处理排行榜数据
-            if (rankingsRes.status === 'fulfilled' && rankingsRes.value.data?.results) {
-                const books = rankingsRes.value.data.results.slice(0, 5).map(toRankingBook);
-                setRankingBooks(books.length > 0 ? books : RANKING_BOOKS);
-            } else {
-                console.warn('Rankings fetch failed, using mock data');
-                setRankingBooks(RANKING_BOOKS);
-            }
+            setHeroBooks(hero.length > 0 ? hero : HERO_BOOKS.slice(0, SECTION_LIMITS.hero));
+            setEditorsPicks(editors.length > 0 ? editors : EDITORS_PICKS.slice(0, SECTION_LIMITS.editors_picks));
+            setRankingBooks(rankings.length > 0 ? rankings : RANKING_BOOKS.slice(0, SECTION_LIMITS.rankings));
 
         } catch (err) {
             console.error('Failed to fetch home data:', err);
             setError('加载失败，使用离线数据');
             // 降级到 mock 数据
-            setHeroBooks(HERO_BOOKS);
-            setEditorsPicks(EDITORS_PICKS);
-            setRankingBooks(RANKING_BOOKS);
+            setHeroBooks(HERO_BOOKS.slice(0, SECTION_LIMITS.hero));
+            setEditorsPicks(EDITORS_PICKS.slice(0, SECTION_LIMITS.editors_picks));
+            setRankingBooks(RANKING_BOOKS.slice(0, SECTION_LIMITS.rankings));
         } finally {
             setIsLoading(false);
         }
@@ -123,9 +154,9 @@ export const useHomeData = (): UseHomeDataReturn => {
 
     // 使用 mock 数据
     const loadMockData = useCallback(() => {
-        setHeroBooks(HERO_BOOKS);
-        setEditorsPicks(EDITORS_PICKS);
-        setRankingBooks(RANKING_BOOKS);
+        setHeroBooks(HERO_BOOKS.slice(0, SECTION_LIMITS.hero));
+        setEditorsPicks(EDITORS_PICKS.slice(0, SECTION_LIMITS.editors_picks));
+        setRankingBooks(RANKING_BOOKS.slice(0, SECTION_LIMITS.rankings));
         setIsLoading(false);
     }, []);
 
