@@ -4,14 +4,12 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Dimensions,
-  Animated,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { HERO_BOOKS, getBookCoverUrl } from "../data/mockData";
 import { BookWithStats } from "../types";
+import FallbackImage from "./common/FallbackImage";
 import {
   COLORS,
   SPACING,
@@ -23,20 +21,30 @@ import {
 
 const { width } = Dimensions.get("window");
 
-const HeroCarousel: React.FC = () => {
+interface HeroCarouselProps {
+  books: BookWithStats[];
+}
+
+// 获取封面 URL（兼容多种格式）
+const getBookCoverUrl = (book: BookWithStats): string => {
+  return book.cover_url || book.coverUrl || '';
+};
+
+const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
   // 自动轮播
   useEffect(() => {
+    if (books.length === 0) return;
     const timer = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % HERO_BOOKS.length;
+      const nextIndex = (currentIndex + 1) % books.length;
       setCurrentIndex(nextIndex);
       scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
     }, CAROUSEL_CONFIG.autoScrollInterval);
 
     return () => clearInterval(timer);
-  }, [currentIndex]);
+  }, [currentIndex, books.length]);
 
   const handleMomentumScrollEnd = useCallback(
     (event: { nativeEvent: { contentOffset: { x: number } } }) => {
@@ -69,8 +77,9 @@ const HeroCarousel: React.FC = () => {
               </View>
 
               <View style={styles.smallCoverContainer}>
-                <Image
-                  source={{ uri: getBookCoverUrl(book) }}
+                <FallbackImage
+                  uri={getBookCoverUrl(book)}
+                  sourceId={book.source_id || book.sourceId}
                   style={styles.smallCover}
                 />
               </View>
@@ -126,11 +135,11 @@ const HeroCarousel: React.FC = () => {
         onMomentumScrollEnd={handleMomentumScrollEnd}
         style={styles.carouselContainer}
       >
-        {HERO_BOOKS.map((book, index) => renderCarouselItem(book, index))}
+        {books.map((book, index) => renderCarouselItem(book, index))}
       </ScrollView>
 
       <View style={styles.paginationContainer}>
-        {HERO_BOOKS.map((_, idx) => (
+        {books.map((_, idx) => (
           <View
             key={idx}
             style={[

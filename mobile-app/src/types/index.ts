@@ -27,6 +27,8 @@ export interface Book {
   description?: string;
   cover_url?: string; // 后端格式
   coverUrl?: string; // 前端格式
+  cover_proxy_url?: string; // 后端下发的代理 URL
+  coverProxyUrl?: string; // 前端格式的代理 URL
   audio_url?: string;
   audioUrl?: string;
   audio_proxy_url?: string;

@@ -1,11 +1,20 @@
 import React, { useCallback } from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { RANKING_BOOKS, getBookCoverUrl } from "../data/mockData";
 import { Book } from "../types";
+import FallbackImage from "./common/FallbackImage";
 import { COLORS, SPACING, SIZES, SHADOWS } from "../constants/design-tokens";
 
-const Rankings: React.FC = () => {
+interface RankingsProps {
+  books: Book[];
+}
+
+// 获取封面 URL（兼容多种格式）
+const getBookCoverUrl = (book: Book): string => {
+  return book.cover_url || book.coverUrl || '';
+};
+
+const Rankings: React.FC<RankingsProps> = ({ books }) => {
   // 使用正确的类型
   const renderRankingItem = useCallback(
     ({ item }: { item: Book }) => (
@@ -14,8 +23,9 @@ const Rankings: React.FC = () => {
         activeOpacity={COLORS.opacity?.active || 0.8}
       >
         <View style={styles.bookCoverContainer}>
-          <Image
-            source={{ uri: getBookCoverUrl(item) }}
+          <FallbackImage
+            uri={getBookCoverUrl(item)}
+            sourceId={item.source_id || item.sourceId}
             style={styles.bookCover}
           />
         </View>
@@ -54,7 +64,7 @@ const Rankings: React.FC = () => {
       </View>
 
       <View style={styles.listContainer}>
-        {RANKING_BOOKS.slice(0, 4).map((item, index) => (
+        {books.slice(0, 4).map((item, index) => (
           <View key={item.id.toString()}>
             {renderRankingItem({ item })}
             {index < 3 && <View style={{ height: SPACING.sm }} />}

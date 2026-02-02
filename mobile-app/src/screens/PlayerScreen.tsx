@@ -21,6 +21,7 @@ import { Book } from '../types';
 import Loading from '../components/common/Loading';
 import { useLocalSearchParams } from 'expo-router';
 import { useAudioPlayer, Episode } from '../hooks/useAudioPlayer';
+import { useFavorites } from '../hooks/useFavorites';
 
 const { width } = Dimensions.get('window');
 const SOURCE_NAMES: Record<string, string> = {
@@ -58,12 +59,12 @@ const PlayerScreen: React.FC = () => {
   const [book, setBook] = useState<Book | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const episodesPerPage = EPISODES_PER_PAGE;
   const [episodePage, setEpisodePage] = useState(1);
   const { showToast } = useToast();
+  const { isFavorited, toggleFavorite: toggleFavoritePersist } = useFavorites();
 
   const {
     state: playbackState,
@@ -195,8 +196,19 @@ const PlayerScreen: React.FC = () => {
   };
 
   const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    showToast({ type: 'success', message: isFavorite ? '已取消收藏' : '已添加收藏' });
+    const wasFavorite = isFavorited(sourceId, bookId);
+    const coverUrlToSave = displayCoverUrl || fallbackCoverUrl || '';
+    toggleFavoritePersist({
+      sourceId: sourceId || 'local',
+      bookId,
+      title: displayTitle,
+      author: displayAuthor,
+      coverUrl: coverUrlToSave,
+    }).then(({ isNowFavorite }) => {
+      showToast({ type: 'success', message: isNowFavorite ? '已添加收藏' : '已取消收藏' });
+    }).catch(() => {
+      showToast({ type: 'error', message: wasFavorite ? '取消收藏失败' : '收藏失败' });
+    });
   };
 
   const getCoverSize = () => (isSmallScreen() ? width * 0.75 : width * 0.8);
@@ -204,6 +216,7 @@ const PlayerScreen: React.FC = () => {
   const displayTitle = book?.title || fallbackTitle || '未知书名';
   const displayAuthor = book?.author || fallbackAuthor || '未知作者';
   const displayCoverUrl = book?.cover_url || book?.coverUrl || fallbackCoverUrl || 'https://picsum.photos/600/600?random=1';
+  const isFavorite = isFavorited(sourceId, bookId);
   const sourceLabel = sourceId ? (SOURCE_NAMES[sourceId] || sourceId) : '本地书库';
   const episodeCountFromBook = Math.max(
     typeof book?.chapter_count === 'number' ? book.chapter_count : 0,

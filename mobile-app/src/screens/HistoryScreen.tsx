@@ -18,6 +18,7 @@ import EmptyState from '../components/common/EmptyState';
 import CachedImage from '../components/common/CachedImage';
 import { useToast } from '../contexts/ToastContext';
 import { usePlayHistory, PlayHistoryItem } from '../hooks/usePlayHistory';
+import { saveFavoriteItem } from '../hooks/useFavorites';
 
 const ITEM_HEIGHT = 120;
 
@@ -96,9 +97,20 @@ const HistoryScreen: React.FC = () => {
       },
       {
         text: '收藏',
-        onPress: () => {
-          showToast({ type: 'info', message: '已收藏' });
-        }
+        onPress: async () => {
+          try {
+            const result = await saveFavoriteItem({
+              sourceId: item.sourceId || 'local',
+              bookId: String(item.bookId),
+              title: item.title,
+              author: item.author,
+              coverUrl: item.coverUrl,
+            });
+            showToast({ type: 'success', message: result.isNowFavorite ? '已添加收藏' : '已取消收藏' });
+          } catch {
+            showToast({ type: 'error', message: '收藏失败' });
+          }
+        },
       },
       { text: '取消', style: 'cancel' }
     ]);

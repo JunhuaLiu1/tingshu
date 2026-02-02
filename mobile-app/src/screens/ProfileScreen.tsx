@@ -22,6 +22,7 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { getAppVersion } from '../utils/appVersion';
 import { useAuth } from '../contexts/AuthContext';
+import { audioCache } from '../services/audioCache';
 import { useAvatarPicker } from '../hooks/useAvatarPicker';
 
 const ProfileScreen: React.FC = () => {
@@ -33,6 +34,7 @@ const ProfileScreen: React.FC = () => {
     isLoading,
     error,
     loadProfile,
+    updateProfile,
   } = useUserProfile();
 
   const {
@@ -83,12 +85,18 @@ const ProfileScreen: React.FC = () => {
       {
         text: '清除',
         style: 'destructive',
-        onPress: () => {
-          showToast({ type: 'success', message: '缓存已清除' });
-        }
+        onPress: async () => {
+          try {
+            await audioCache.clearCache();
+            await loadProfile();
+            showToast({ type: 'success', message: '缓存已清除' });
+          } catch {
+            showToast({ type: 'error', message: '清除失败' });
+          }
+        },
       },
     ]);
-  }, [showToast]);
+  }, [showToast, loadProfile]);
 
   // 格式化日期
   const formatDate = useCallback((dateString: string): string => {

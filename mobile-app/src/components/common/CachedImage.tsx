@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   ImageProps,
@@ -20,6 +20,20 @@ const CachedImage: React.FC<CachedImageProps> = ({
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  const source = (props as ImageProps).source as any;
+
+  const sourceKey = useMemo(() => {
+    if (!source) return 'null';
+    if (typeof source === 'number') return String(source);
+    if (Array.isArray(source)) return JSON.stringify(source);
+    return source?.uri || JSON.stringify(source);
+  }, [source]);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(false);
+  }, [sourceKey]);
 
   const handleLoad = () => {
     setLoading(false);

@@ -1,8 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { historyApi } from '../services/api';
+import { audioCache } from '../services/audioCache';
 
 const USER_PROFILE_KEY = 'user_profile';
 const USER_STATS_KEY = 'user_stats';
+const PLAY_HISTORY_KEY = 'play_history';
+const FAVORITES_KEY = 'favorites';
+const PROGRESS_KEY_PREFIX = 'playback_progress_';
+
+const safeNumber = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+};
 
 // 用户基本信息接口
 export interface UserProfile {
@@ -47,7 +61,7 @@ export const useUserProfile = (): UseUserProfileReturn => {
   const [error, setError] = useState<string | null>(null);
 
   // 模拟默认用户数据（用于首次使用）
-  const getDefaultProfile = (): UserProfile => ({
+  const getDefaultProfile = useCallback((): UserProfile => ({
     id: 1,
     username: 'booklover',
     email: 'booklover@example.com',
@@ -55,21 +69,120 @@ export const useUserProfile = (): UseUserProfileReturn => {
     phone: '138****8888',
     created_at: '2023-01-01T00:00:00Z',
     updated_at: new Date().toISOString(),
-  });
+  }), []);
 
-  // 模拟统计数据（从 API 获取）
-  const fetchStatsFromAPI = (): UserStats => {
-    // 这里应该调用真实的 API
-    // 暂时返回模拟数据
+  const loadFavoritesCount = useCallback(async (): Promise<number> => {
+    try {
+      const data = await AsyncStorage.getItem(FAVORITES_KEY);
+      if (!data) return 0;
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return 0;
+      return parsed.length;
+    } catch {
+      return 0;
+    }
+  }, []);
+
+  const computeStatsFromLocalHistory = useCallback(async (): Promise<{ booksPlayed: number; listenedSeconds: number }> => {
+    try {
+      const data = await AsyncStorage.getItem(PLAY_HISTORY_KEY);
+      if (!data) return { booksPlayed: 0, listenedSeconds: 0 };
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return { booksPlayed: 0, listenedSeconds: 0 };
+
+      const uniqueBookKeys = new Set<string>();
+      let listenedSeconds = 0;
+
+      for (const item of parsed) {
+        const bookId = (item?.bookId ?? item?.book_id ?? '').toString();
+        const sourceId = (item?.sourceId ?? item?.source_id ?? 'local').toString();
+        if (bookId) uniqueBookKeys.add(`${sourceId}_${bookId}`);
+
+        const duration = safeNumber(item?.duration);
+        const progress = safeNumber(item?.progress);
+        if (duration > 0 && progress > 0) {
+          listenedSeconds += (duration * progress) / 100;
+        }
+      }
+
+      return { booksPlayed: uniqueBookKeys.size, listenedSeconds };
+    } catch {
+      return { booksPlayed: 0, listenedSeconds: 0 };
+    }
+  }, []);
+
+  const computeListenedSecondsFromProgressKeys = useCallback(async (): Promise<number> => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const progressKeys = keys.filter(k => typeof k === 'string' && k.startsWith(PROGRESS_KEY_PREFIX));
+      if (progressKeys.length === 0) return 0;
+
+      let total = 0;
+      const chunkSize = 50;
+      for (let i = 0; i < progressKeys.length; i += chunkSize) {
+        const chunk = progressKeys.slice(i, i + chunkSize);
+        const pairs = await AsyncStorage.multiGet(chunk);
+        for (const [, value] of pairs) {
+          if (!value) continue;
+          try {
+            const parsed = JSON.parse(value);
+            total += safeNumber(parsed?.position);
+          } catch {
+            // ignore malformed record
+          }
+        }
+      }
+
+      return total;
+    } catch {
+      return 0;
+    }
+  }, []);
+
+  // 基于真实数据计算统计：优先后端 /history（登录态），失败时回退本地 play_history
+  const fetchStats = useCallback(async (): Promise<UserStats> => {
+    let booksPlayed = 0;
+    let listenedSeconds = 0;
+
+    // 1) 听书时长：优先使用本地按章节保存的播放进度（每 5 秒更新一次），更贴近真实使用情况
+    listenedSeconds = await computeListenedSecondsFromProgressKeys();
+
+    try {
+      const resp = await historyApi.getHistory();
+      if (resp.code === 200 && Array.isArray(resp.data)) {
+        booksPlayed = resp.data.length;
+        // 若本地没有可用进度数据，则使用历史记录做近似
+        if (listenedSeconds <= 0) {
+          listenedSeconds = resp.data.reduce((sum: number, h: any) => {
+            const duration = safeNumber(h?.duration);
+            const progress = safeNumber(h?.progress);
+            if (duration <= 0 || progress <= 0) return sum;
+            return sum + (duration * progress) / 100;
+          }, 0);
+        }
+      } else {
+        const local = await computeStatsFromLocalHistory();
+        booksPlayed = local.booksPlayed;
+        if (listenedSeconds <= 0) listenedSeconds = local.listenedSeconds;
+      }
+    } catch {
+      const local = await computeStatsFromLocalHistory();
+      booksPlayed = local.booksPlayed;
+      if (listenedSeconds <= 0) listenedSeconds = local.listenedSeconds;
+    }
+
+    const favorites = await loadFavoritesCount();
+    const cachedCount = await audioCache.getCacheSize();
+
     return {
-      booksPlayed: Math.floor(Math.random() * 200) + 50,  // 50-250
-      totalHours: Math.floor(Math.random() * 1000) + 100, // 100-1100
-      favorites: Math.floor(Math.random() * 50) + 10,     // 10-60
-      downloads: Math.floor(Math.random() * 30) + 5,      // 5-35
-      messages: Math.floor(Math.random() * 5),            // 0-5
-      cacheSize: `${Math.floor(Math.random() * 200) + 50}MB`, // 50-250MB
+      booksPlayed,
+      totalHours: listenedSeconds / 3600,
+      favorites,
+      downloads: cachedCount,
+      messages: 0,
+      cacheSize: `${cachedCount}个音频`,
     };
-  };
+  }, [computeListenedSecondsFromProgressKeys, computeStatsFromLocalHistory, loadFavoritesCount]);
 
   // 加载用户资料
   const loadProfile = useCallback(async () => {
@@ -91,19 +204,10 @@ export const useUserProfile = (): UseUserProfileReturn => {
 
       setProfile(userProfile);
 
-      // 从 AsyncStorage 加载统计数据
-      const statsData = await AsyncStorage.getItem(USER_STATS_KEY);
-      let userStats: UserStats;
-
-      if (statsData) {
-        userStats = JSON.parse(statsData);
-      } else {
-        // 首次使用，从 API 获取（模拟）
-        userStats = fetchStatsFromAPI();
-        await AsyncStorage.setItem(USER_STATS_KEY, JSON.stringify(userStats));
-      }
-
+      const userStats = await fetchStats();
       setStats(userStats);
+      // 允许离线显示最近一次统计
+      await AsyncStorage.setItem(USER_STATS_KEY, JSON.stringify(userStats));
     } catch (err) {
       const message = err instanceof Error ? err.message : '加载用户资料失败';
       setError(message);
@@ -111,7 +215,7 @@ export const useUserProfile = (): UseUserProfileReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchStats, getDefaultProfile]);
 
   // 更新用户资料
   const updateProfile = useCallback(async (data: Partial<UserProfile>) => {
