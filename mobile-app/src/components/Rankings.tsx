@@ -1,9 +1,11 @@
 import React, { useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Book } from "../types";
 import FallbackImage from "./common/FallbackImage";
 import { COLORS, SPACING, SIZES, SHADOWS } from "../constants/design-tokens";
+import { openBookInPlayer } from "../utils/openPlayer";
 
 interface RankingsProps {
   books: Book[];
@@ -15,12 +17,19 @@ const getBookCoverUrl = (book: Book): string => {
 };
 
 const Rankings: React.FC<RankingsProps> = ({ books }) => {
+  const router = useRouter();
+
+  const openPlayer = useCallback((book: Book) => {
+    openBookInPlayer(router as any, book as any);
+  }, [router]);
+
   // 使用正确的类型
   const renderRankingItem = useCallback(
     ({ item }: { item: Book }) => (
       <TouchableOpacity
         style={styles.rankingItem}
         activeOpacity={COLORS.opacity?.active || 0.8}
+        onPress={() => openPlayer(item)}
       >
         <View style={styles.bookCoverContainer}>
           <FallbackImage
@@ -51,7 +60,7 @@ const Rankings: React.FC<RankingsProps> = ({ books }) => {
         </View>
       </TouchableOpacity>
     ),
-    [],
+    [openPlayer],
   );
 
   return (

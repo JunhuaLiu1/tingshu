@@ -44,9 +44,10 @@ const sortByPlayCountDesc = (books: Book[]): Book[] => {
 };
 
 // 将后端 Book 转换为 BookWithStats（用于 HeroCarousel）
-const toBookWithStats = (book: Book, index: number): BookWithStats => ({
+const toBookWithStats = (book: Book): BookWithStats => ({
     ...withTimestamps(book),
-    id: typeof book.id === 'string' ? parseInt(book.id, 10) || index + 1 : book.id,
+    // 保留音源返回的原始 id（常为字符串且非纯数字）；强转会导致后续无法按 id 获取详情/章节
+    id: book.id,
     stats: {
         playCount: book.play_count
             ? (book.play_count >= 10000 ? `${(book.play_count / 10000).toFixed(1)}万` : `${book.play_count}`)
@@ -58,7 +59,7 @@ const toBookWithStats = (book: Book, index: number): BookWithStats => ({
 // 将后端 Book 转换为排行榜格式
 const toRankingBook = (book: Book, index: number): Book => ({
     ...withTimestamps(book),
-    id: typeof book.id === 'string' ? parseInt(book.id, 10) || index + 1 : book.id,
+    id: book.id,
     rank: index + 1,
 });
 
@@ -123,10 +124,10 @@ export const useHomeData = (): UseHomeDataReturn => {
                 collectSection('rankings'),
             ]);
 
-            const hero = heroRaw.map((b, i) => toBookWithStats(b, i));
-            const editors = editorsRaw.map((book, i) => ({
+            const hero = heroRaw.map((b) => toBookWithStats(b));
+            const editors = editorsRaw.map((book) => ({
                 ...withTimestamps(book),
-                id: typeof book.id === 'string' ? parseInt(book.id, 10) || i + 1 : book.id,
+                id: book.id,
             }));
             const rankings = rankingsRaw.map((b, i) => toRankingBook(b, i));
 

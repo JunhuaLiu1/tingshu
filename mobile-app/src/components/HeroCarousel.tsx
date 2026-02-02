@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Dimensions,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BookWithStats } from "../types";
 import FallbackImage from "./common/FallbackImage";
+import { openBookInPlayer } from "../utils/openPlayer";
 import {
   COLORS,
   SPACING,
@@ -31,8 +33,13 @@ const getBookCoverUrl = (book: BookWithStats): string => {
 };
 
 const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+
+  const openPlayer = useCallback((book: BookWithStats) => {
+    openBookInPlayer(router as any, book as any);
+  }, [router]);
 
   // 自动轮播
   useEffect(() => {
@@ -56,9 +63,13 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
 
   // 使用正确的类型
   const renderCarouselItem = useCallback(
-    (book: BookWithStats, index: number) => (
-      <View key={book.id} style={[styles.carouselItem, { width }]}>
-        <View style={styles.ticketCard}>
+    (book: BookWithStats) => (
+      <View key={book.id} style={[styles.carouselItem, { width }]}> 
+        <TouchableOpacity
+          style={styles.ticketCard}
+          activeOpacity={0.9}
+          onPress={() => openPlayer(book)}
+        >
           <View style={styles.backgroundGradient} />
           <View style={[styles.notch, styles.leftNotch]} />
           <View style={[styles.notch, styles.rightNotch]} />
@@ -110,7 +121,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.playButton}>
+              <TouchableOpacity style={styles.playButton} onPress={() => openPlayer(book)}>
                 <MaterialIcons
                   name="play-arrow"
                   size={SIZES.icon.medium}
@@ -119,10 +130,10 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
     ),
-    [],
+    [openPlayer],
   );
 
   return (
@@ -135,7 +146,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
         onMomentumScrollEnd={handleMomentumScrollEnd}
         style={styles.carouselContainer}
       >
-        {books.map((book, index) => renderCarouselItem(book, index))}
+        {books.map((book) => renderCarouselItem(book))}
       </ScrollView>
 
       <View style={styles.paginationContainer}>

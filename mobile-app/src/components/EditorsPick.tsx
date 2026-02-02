@@ -1,17 +1,16 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Book } from '../types';
 import FallbackImage from './common/FallbackImage';
-
-const { width } = Dimensions.get('window');
+import { openBookInPlayer } from '../utils/openPlayer';
 
 interface EditorsPickProps {
   books: Book[];
@@ -23,8 +22,18 @@ const getBookCoverUrl = (book: Book): string => {
 };
 
 const EditorsPick: React.FC<EditorsPickProps> = ({ books }) => {
+  const router = useRouter();
+
+  const openPlayer = useCallback((book: Book) => {
+    openBookInPlayer(router as any, book as any);
+  }, [router]);
+
   const renderBookItem = ({ item }: any) => (
-    <TouchableOpacity style={styles.bookCard} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={styles.bookCard}
+      activeOpacity={0.8}
+      onPress={() => openPlayer(item)}
+    >
       <View style={styles.bookCoverContainer}>
         <FallbackImage
           uri={getBookCoverUrl(item)}
@@ -32,7 +41,7 @@ const EditorsPick: React.FC<EditorsPickProps> = ({ books }) => {
           style={styles.bookCover}
         />
         <View style={styles.playButtonOverlay}>
-          <TouchableOpacity style={styles.playButton}>
+          <TouchableOpacity style={styles.playButton} onPress={() => openPlayer(item)}>
             <MaterialIcons name="play-arrow" size={16} color="#333" />
           </TouchableOpacity>
         </View>
