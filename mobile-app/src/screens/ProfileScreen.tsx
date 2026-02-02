@@ -22,6 +22,7 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { getAppVersion } from '../utils/appVersion';
 import { useAuth } from '../contexts/AuthContext';
+import { useAvatarPicker } from '../hooks/useAvatarPicker';
 
 const ProfileScreen: React.FC = () => {
   const { showToast } = useToast();
@@ -38,6 +39,8 @@ const ProfileScreen: React.FC = () => {
     settings,
     updateSettings,
   } = useAppSettings();
+
+  const { pickAvatar, isLoading: avatarLoading } = useAvatarPicker();
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -204,7 +207,12 @@ const ProfileScreen: React.FC = () => {
         {/* 用户信息卡片 */}
         <SafeAreaView style={{ paddingTop: Platform.OS === 'android' ? 40 : 0 }}>
           <View style={styles.profileHeader}>
-            <View style={styles.avatarContainer}>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={pickAvatar}
+              activeOpacity={0.8}
+              disabled={avatarLoading}
+            >
               <CachedImage
                 source={{ uri: profile?.avatar || 'https://picsum.photos/200/200?random=avatar' }}
                 style={styles.avatar}
@@ -212,7 +220,12 @@ const ProfileScreen: React.FC = () => {
               <View style={styles.editBadge}>
                 <MaterialIcons name="edit" size={12} color="#fff" />
               </View>
-            </View>
+              {avatarLoading && (
+                <View style={styles.avatarLoadingOverlay}>
+                  <Text style={styles.avatarLoadingText}>...</Text>
+                </View>
+              )}
+            </TouchableOpacity>
             <View style={styles.userInfo}>
               <Text style={styles.username}>{user?.user_id || profile?.username || '用户'}</Text>
               <Text style={styles.joinDate}>
@@ -347,6 +360,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: tokens.colors.surface,
+  },
+  avatarLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarLoadingText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   userInfo: {
     alignItems: 'center',
