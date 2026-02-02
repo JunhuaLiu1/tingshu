@@ -79,6 +79,10 @@ func SetupRoutes() *gin.Engine {
 		v1Group.POST("/auth/login", v1.Login)
 		v1Group.POST("/auth/password/reset/request", v1.RequestPasswordReset)
 		v1Group.POST("/auth/password/reset/confirm", v1.ConfirmPasswordReset)
+
+		// 用户资料（需要认证）
+		v1Group.GET("/profile", middleware.Auth(), v1.GetProfile)
+		v1Group.PUT("/profile", middleware.Auth(), v1.UpdateProfile)
 	}
 
 	return router

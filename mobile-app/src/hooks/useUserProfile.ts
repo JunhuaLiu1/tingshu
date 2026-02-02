@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { historyApi } from '../services/api';
+import { historyApi, userApi } from '../services/api';
 import { audioCache } from '../services/audioCache';
 
 const USER_PROFILE_KEY = 'user_profile';
@@ -20,11 +20,11 @@ const safeNumber = (value: unknown): number => {
 
 // 用户基本信息接口
 export interface UserProfile {
-  id: number;
-  username: string;
+  id: string;
+  user_id: string;
+  username: string;  // 显示名称，使用 user_id
   email: string;
   avatar: string;
-  phone: string;
   created_at: string;
   updated_at: string;
 }
@@ -59,17 +59,6 @@ export const useUserProfile = (): UseUserProfileReturn => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // 模拟默认用户数据（用于首次使用）
-  const getDefaultProfile = useCallback((): UserProfile => ({
-    id: 1,
-    username: 'booklover',
-    email: 'booklover@example.com',
-    avatar: 'https://picsum.photos/200/200?random=avatar',
-    phone: '138****8888',
-    created_at: '2023-01-01T00:00:00Z',
-    updated_at: new Date().toISOString(),
-  }), []);
 
   const loadFavoritesCount = useCallback(async (): Promise<number> => {
     try {
@@ -190,16 +179,35 @@ export const useUserProfile = (): UseUserProfileReturn => {
       setError(null);
       setIsLoading(true);
 
-      // 从 AsyncStorage 加载用户资料
-      const profileData = await AsyncStorage.getItem(USER_PROFILE_KEY);
-      let userProfile: UserProfile;
+      let userProfile: UserProfile | null = null;
 
-      if (profileData) {
-        userProfile = JSON.parse(profileData);
-      } else {
-        // 首次使用，创建默认资料
-        userProfile = getDefaultProfile();
-        await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
+      // 优先从后端 API 获取真实用户资料
+      try {
+        const resp = await userApi.getProfile();
+        if (resp.code === 200 && resp.data) {
+          const apiData = resp.data;
+          userProfile = {
+            id: apiData.id,
+            user_id: apiData.user_id,
+            username: apiData.user_id,  // 使用 user_id 作为显示名
+            email: apiData.email,
+            avatar: apiData.avatar || '',
+            created_at: apiData.created_at,
+            updated_at: apiData.updated_at || apiData.created_at,
+          };
+          // 缓存到本地，支持离线查看
+          await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
+        }
+      } catch (apiErr) {
+        console.warn('Failed to fetch profile from API, using cached data:', apiErr);
+      }
+
+      // 如果 API 请求失败，尝试从本地缓存加载
+      if (!userProfile) {
+        const cachedData = await AsyncStorage.getItem(USER_PROFILE_KEY);
+        if (cachedData) {
+          userProfile = JSON.parse(cachedData);
+        }
       }
 
       setProfile(userProfile);
@@ -215,7 +223,7 @@ export const useUserProfile = (): UseUserProfileReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchStats, getDefaultProfile]);
+  }, [fetchStats]);
 
   // 更新用户资料
   const updateProfile = useCallback(async (data: Partial<UserProfile>) => {
@@ -226,14 +234,22 @@ export const useUserProfile = (): UseUserProfileReturn => {
         throw new Error('用户资料未加载');
       }
 
+      // 先更新本地
       const updatedProfile = {
         ...profile,
         ...data,
         updated_at: new Date().toISOString(),
       };
 
-      await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedProfile));
       setProfile(updatedProfile);
+      await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedProfile));
+
+      // 同步到后端
+      try {
+        await userApi.updateProfile({ avatar: updatedProfile.avatar });
+      } catch (apiErr) {
+        console.warn('Failed to sync profile to API:', apiErr);
+      }
 
       return updatedProfile;
     } catch (err) {

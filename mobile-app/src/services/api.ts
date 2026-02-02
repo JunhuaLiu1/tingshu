@@ -167,13 +167,21 @@ export const historyApi = {
     apiClient.delete('/history').then(res => res.data),
 };
 
-// 用户 API（预留）
+// 用户 API
 export const userApi = {
-  // 获取用户档案
+  // 获取当前用户资料
+  getProfile: (): Promise<ApiResponse<any>> =>
+    apiClient.get('/profile').then(res => res.data),
+
+  // 更新当前用户资料
+  updateProfile: (data: { avatar?: string }): Promise<ApiResponse<any>> =>
+    apiClient.put('/profile', data).then(res => res.data),
+
+  // 获取用户档案（旧接口，保留兼容）
   getUserProfile: (userId: number): Promise<ApiResponse<any>> =>
     apiClient.get(`/users/${userId}/profile`).then(res => res.data),
 
-  // 更新用户档案
+  // 更新用户档案（旧接口，保留兼容）
   updateUserProfile: (userId: number, data: any): Promise<ApiResponse<any>> =>
     apiClient.put(`/users/${userId}/profile`, data).then(res => res.data),
 

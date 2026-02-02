@@ -235,9 +235,9 @@ const ProfileScreen: React.FC = () => {
               )}
             </TouchableOpacity>
             <View style={styles.userInfo}>
-              <Text style={styles.username}>{user?.user_id || profile?.username || '用户'}</Text>
+              <Text style={styles.username}>{profile?.username || profile?.user_id || user?.user_id || '用户'}</Text>
               <Text style={styles.joinDate}>
-                {profile ? `加入时间 ${formatDate(profile.created_at)}` : ' '}
+                {profile?.created_at ? `加入时间 ${formatDate(profile.created_at)}` : ' '}
               </Text>
             </View>
           </View>
