@@ -27,7 +27,7 @@
 ## 3. Users / Use Cases
 - UC-1：用户打开首页，轮播图/推荐/排行榜展示与书籍真实封面匹配的图片。
 - UC-2：某些图片 URL 被防盗链拦截或偶发失败时，仍能展示占位图/或通过代理加载成功，避免大片空白。
-- UC-3：开发/运营可在不发版的情况下调整“首页内容来源策略”（优先后端，下发可变）。
+- UC-3：开发/运营可调整“首页内容来源策略”（优先后端，下发可变）。说明：若要实现“不发版调整”，需要后端下发首页分区（方案 B）或接入远程配置能力；仅依赖 Expo 环境变量通常需要重新构建 App。
 
 ## 4. Requirements
 ### Functional Requirements
@@ -49,7 +49,12 @@
 ### 方案 A：前端直连后端音源封面（MVP，最小后端改动）
 **做法**
 - 首页数据来源改为调用后端聚合搜索：`POST /api/v1/global/search?q={keyword}`（keyword 为固定推荐词）。
-- 对结果按需要裁剪/排序后分别喂给轮播图/编辑推荐/排行榜。
+- 对结果按需要裁剪/排序后分别喂给轮播图/编辑推荐/排行榜（建议明确规则，避免实现时各写各的）：
+  - 关键词策略（首期推荐）：配置一个固定关键词列表（例如：`["热门","经典","科幻","悬疑"]`），按顺序请求，直到填满各分区所需数量；关键词列表后续可迁移到后端 `/api/v1/home` 下发或远程配置（见方案 B）。
+  - 去重规则：以 `source_id + ":" + id` 作为唯一键去重，避免多个分区/多关键词重复出现同一本书。
+  - 排序规则：优先按 `play_count`（若存在）降序；若缺失则保持后端返回顺序（保证稳定性）。
+  - 分区数量建议：`hero=3`、`editors_picks=6`、`rankings=10`（可在实现中做常量，后续可配置化）。
+  - 不足回退：若所有关键词跑完仍不足（例如某分区不足 50%），则降级回 `mock` 分区数据（受开关控制），或允许该分区为空但必须有占位 UI（两者二选一，建议先“回 mock”保证体验）。
 - 图片渲染优先使用 `cover_url` 直连。
 - 若图片加载失败，可在前端按 `source_id + cover_url` 生成代理 URL（复用现有 `/api/v1/proxy/audio` 代理能力），并重试一次；仍失败则显示本地占位图。
 
@@ -113,6 +118,29 @@ Mobile Home
 ```
 
 ## 7. Interfaces / Data Contract
+### 7.0 依赖的现有接口（方案 A）
+`POST /api/v1/global/search?q={keyword}`
+
+最小依赖字段（节选）：
+```json
+{
+  "code": 200,
+  "data": {
+    "total": 123,
+    "results": [
+      {
+        "id": "book_id",
+        "title": "书名",
+        "author": "作者",
+        "source_id": "kuwo",
+        "cover_url": "https://example.com/cover.jpg",
+        "play_count": 12345
+      }
+    ]
+  }
+}
+```
+
 ### 7.1 Mobile 侧推荐分区数据结构（建议）
 ```ts
 type HomeSectionKey = "hero" | "editors_picks" | "rankings";
@@ -173,6 +201,13 @@ interface HomeSection {
   - host 必须在对应 source 的白名单域名后缀；
   - 禁止 localhost/.local/私网 IP（已存在逻辑可复用）。
 - 代理避免成为通用 Open Proxy：禁止任意域名透传。
+- 日志与可观测性脱敏：如需记录失败信息，不记录完整 `cover_url`，仅记录 `source_id + host + path 前缀`（避免泄露 query/token）。
+
+### 9.1 关于复用 `/proxy/audio` 代理图片的约束（短期决策）
+- 短期允许复用 `/api/v1/proxy/audio` 代理封面图片，作为“图片失败时的二次重试路径”，不作为默认路径。
+- 中期建议新增 `/api/v1/proxy/image`（或为 `/proxy/audio` 增加别名路由），并补充：
+  - 只允许响应 `Content-Type` 为 `image/*`（否则拒绝或降级）。
+  - 增加响应体大小上限（例如 5MB）与更短的超时，避免被滥用为大文件代理。
 
 ## 10. Rollout / Migration / Rollback
 ### Rollout
@@ -209,4 +244,3 @@ interface HomeSection {
 - TBD：首期首页分区（hero/editors/rankings）的“固定关键词”取值与数量（需要产品/运营确认）。
 - TBD：是否需要新增专门的 `/api/v1/home` 接口（还是先用前端编排 + 全局搜索过渡）。
 - TBD：当前各音源封面是否存在防盗链/Referer 限制（需以真实设备/网络验证后决定是否默认走代理）。
-
