@@ -18,31 +18,102 @@ export interface PlayHistoryItem {
   sourceId?: string;
 }
 
+const normalizeText = (value?: string): string =>
+  (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+const normalizeSourceId = (value?: string): string => {
+  const v = (value ?? '').trim();
+  return v ? v : 'local';
+};
+
+const computeStorageId = (item: Pick<PlayHistoryItem, 'sourceId' | 'bookId'>): string =>
+  `${normalizeSourceId(item.sourceId)}_${String(item.bookId)}`;
+
+// 用于“同一本书”的去重：尽量与用户看到的内容一致（标题/作者），避免跨音源出现重复书籍
+const computeBookIdentityKey = (item: Pick<PlayHistoryItem, 'title' | 'author' | 'sourceId' | 'bookId'>): string => {
+  const title = normalizeText(item.title);
+  const author = normalizeText(item.author);
+  if (title) return author ? `${title}|${author}` : title;
+  // 兜底：没有标题时按 source+bookId 去重
+  return computeStorageId(item);
+};
+
+const normalizeAndDedupHistory = (raw: any[]): { items: PlayHistoryItem[]; changed: boolean } => {
+  let changed = false;
+
+  const parsed: PlayHistoryItem[] = (raw || [])
+    .filter(Boolean)
+    .map((item: any) => {
+      const lastPlayed = item?.lastPlayed ? new Date(item.lastPlayed) : new Date();
+      if (!(lastPlayed instanceof Date) || Number.isNaN(lastPlayed.getTime())) {
+        changed = true;
+      }
+
+      const normalized: PlayHistoryItem = {
+        ...item,
+        bookId: item?.bookId ?? item?.book_id,
+        coverUrl: item?.coverUrl ?? item?.cover_url ?? '',
+        lastPlayed: Number.isNaN(lastPlayed.getTime()) ? new Date() : lastPlayed,
+      };
+
+      if (!normalized.id) {
+        normalized.id = computeStorageId(normalized);
+        changed = true;
+      }
+
+      return normalized;
+    })
+    .filter(i => i.bookId !== undefined && i.bookId !== null);
+
+  // 按时间从新到旧排序，保证去重后保留“最近一次”
+  parsed.sort((a, b) => b.lastPlayed.getTime() - a.lastPlayed.getTime());
+
+  const seen = new Set<string>();
+  const deduped: PlayHistoryItem[] = [];
+  for (const item of parsed) {
+    const key = computeBookIdentityKey(item);
+    if (seen.has(key)) {
+      changed = true;
+      continue;
+    }
+    seen.add(key);
+
+    // 同步修正 id（防止历史数据曾用 episode 维度等导致同书多条）
+    const expectedId = computeStorageId(item);
+    if (item.id !== expectedId) {
+      item.id = expectedId;
+      changed = true;
+    }
+
+    deduped.push(item);
+  }
+
+  if (deduped.length > 50) {
+    changed = true;
+  }
+
+  return { items: deduped.slice(0, 50), changed };
+};
+
 // Standalone function to save play history (can be called from anywhere)
 export const savePlayHistoryItem = async (item: Omit<PlayHistoryItem, 'lastPlayed'>): Promise<void> => {
   try {
     // Save to local AsyncStorage
     const data = await AsyncStorage.getItem(PLAY_HISTORY_KEY);
-    let items: PlayHistoryItem[] = data ? JSON.parse(data) : [];
+    const existingRaw: any[] = data ? JSON.parse(data) : [];
+    const { items: existingItems } = normalizeAndDedupHistory(existingRaw);
 
-    // Remove any existing records for the same source+book (deduplication)
-    const sourceBookKey = `${item.sourceId || 'local'}_${item.bookId}`;
-    items = items.filter(i => {
-      const existingKey = `${i.sourceId || 'local'}_${i.bookId}`;
-      return existingKey !== sourceBookKey;
-    });
-
-    // Add the new/updated record at the beginning
-    items.unshift({
+    const record: PlayHistoryItem = {
       ...item,
-      id: sourceBookKey,
-      lastPlayed: new Date()
-    });
+      id: computeStorageId(item),
+      lastPlayed: new Date(),
+    };
 
-    // Limit to 50 records
-    items = items.slice(0, 50);
+    const newKey = computeBookIdentityKey(record);
+    const merged = [record, ...existingItems.filter(i => computeBookIdentityKey(i) !== newKey)];
+    const { items: finalItems } = normalizeAndDedupHistory(merged);
 
-    await AsyncStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(items));
+    await AsyncStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(finalItems));
 
     // Sync to backend database
     try {
@@ -90,12 +161,12 @@ export const usePlayHistory = (): UsePlayHistoryReturn => {
       const data = await AsyncStorage.getItem(PLAY_HISTORY_KEY);
       if (data) {
         const parsed = JSON.parse(data);
-        // 转换日期字符串回 Date 对象
-        const items = parsed.map((item: any) => ({
-          ...item,
-          lastPlayed: new Date(item.lastPlayed)
-        }));
+        const { items, changed } = normalizeAndDedupHistory(parsed);
         setHistory(items);
+        // 若发现旧数据不规范或存在重复，顺手做一次“迁移清理”，避免历史页再次出现重复
+        if (changed) {
+          await AsyncStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(items));
+        }
       } else {
         setHistory([]);
       }
@@ -115,34 +186,24 @@ export const usePlayHistory = (): UsePlayHistoryReturn => {
 
       // 先加载现有数据
       const data = await AsyncStorage.getItem(PLAY_HISTORY_KEY);
-      let items: PlayHistoryItem[] = data ? JSON.parse(data) : [];
+      const existingRaw: any[] = data ? JSON.parse(data) : [];
+      const { items: existingItems } = normalizeAndDedupHistory(existingRaw);
 
-      // 检查是否已存在（更新进度和时间）
-      const existingIndex = items.findIndex(i => i.id === item.id);
-      if (existingIndex >= 0) {
-        items[existingIndex] = {
-          ...item,
-          lastPlayed: new Date() // 更新为当前时间
-        };
-      } else {
-        // 新增记录
-        items.unshift({
-          ...item,
-          lastPlayed: new Date()
-        });
-      }
+      const record: PlayHistoryItem = {
+        ...item,
+        id: computeStorageId(item),
+        lastPlayed: new Date(),
+      };
 
-      // 限制最多保存 20 条
-      items = items.slice(0, 20);
+      const newKey = computeBookIdentityKey(record);
+      const merged = [record, ...existingItems.filter(i => computeBookIdentityKey(i) !== newKey)];
+      const { items: items } = normalizeAndDedupHistory(merged);
 
       // 保存到 AsyncStorage
       await AsyncStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(items));
 
       // 更新状态
-      setHistory(items.map(i => ({
-        ...i,
-        lastPlayed: new Date(i.lastPlayed)
-      })));
+      setHistory(items);
     } catch (err) {
       const message = err instanceof Error ? err.message : '保存历史记录失败';
       setError(message);
@@ -159,15 +220,12 @@ export const usePlayHistory = (): UsePlayHistoryReturn => {
       const data = await AsyncStorage.getItem(PLAY_HISTORY_KEY);
       if (!data) return;
 
-      let items: PlayHistoryItem[] = JSON.parse(data);
-      items = items.filter(item => item.id !== id);
+      const parsed = JSON.parse(data);
+      const { items: items } = normalizeAndDedupHistory(parsed);
+      const next = items.filter(item => item.id !== id);
 
-      await AsyncStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(items));
-
-      setHistory(items.map(i => ({
-        ...i,
-        lastPlayed: new Date(i.lastPlayed)
-      })));
+      await AsyncStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(next));
+      setHistory(next);
     } catch (err) {
       const message = err instanceof Error ? err.message : '删除记录失败';
       setError(message);
