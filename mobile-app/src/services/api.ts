@@ -55,6 +55,9 @@ export const authApi = {
   login: (data: { identifier: string; password: string }): Promise<ApiResponse<any>> =>
     apiClient.post('/auth/login', data).then(res => res.data),
 
+  changePassword: (data: { old_password: string; new_password: string }): Promise<ApiResponse<any>> =>
+    apiClient.post('/auth/password/change', data).then(res => res.data),
+
   requestPasswordReset: (data: { email: string }): Promise<ApiResponse<any>> =>
     apiClient.post('/auth/password/reset/request', data).then(res => res.data),
 
