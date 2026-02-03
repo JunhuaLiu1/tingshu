@@ -5,11 +5,11 @@ import (
 )
 
 func InitDB() error {
-	// 使用 Supabase 连接
-	if err := InitSupabase(); err != nil {
+	// 使用 MySQL 连接
+	if err := InitMySQL(); err != nil {
 		return err
 	}
 
-	log.Println("Supabase connected successfully")
+	log.Println("MySQL connected successfully")
 	return nil
 }

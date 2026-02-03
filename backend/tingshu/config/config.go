@@ -13,10 +13,12 @@ type Config struct {
 	ServerPort string
 	ServerHost string
 
-	// Supabase 配置
-	SupabaseURL        string
-	SupabaseAnonKey    string
-	SupabaseServiceKey string
+	// MySQL 配置
+	MySQLHost     string
+	MySQLPort     string
+	MySQLUser     string
+	MySQLPassword string
+	MySQLDatabase string
 
 	// Redis 配置
 	RedisAddr     string
@@ -43,10 +45,12 @@ func LoadConfig() error {
 		ServerHost: getEnv("SERVER_HOST", "0.0.0.0"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 
-		// Supabase 配置
-		SupabaseURL:        getEnv("SUPABASE_URL", ""),
-		SupabaseAnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
-		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
+		// MySQL 配置
+		MySQLHost:     getEnv("MYSQL_HOST", "localhost"),
+		MySQLPort:     getEnv("MYSQL_PORT", "3306"),
+		MySQLUser:     getEnv("MYSQL_USER", "root"),
+		MySQLPassword: getEnv("MYSQL_PASSWORD", ""),
+		MySQLDatabase: getEnv("MYSQL_DATABASE", "tingshu"),
 
 		// Redis 配置
 		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),

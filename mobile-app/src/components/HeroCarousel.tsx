@@ -4,13 +4,14 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Dimensions,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { HERO_BOOKS, getBookCoverUrl } from "../data/mockData";
 import { BookWithStats } from "../types";
+import FallbackImage from "./common/FallbackImage";
+import { openBookInPlayer } from "../utils/openPlayer";
 import {
   COLORS,
   SPACING,
@@ -22,25 +23,35 @@ import {
 
 const { width } = Dimensions.get("window");
 
-type HeroCarouselProps = {
-  books?: BookWithStats[];
+interface HeroCarouselProps {
+  books: BookWithStats[];
+}
+
+// 获取封面 URL（兼容多种格式）
+const getBookCoverUrl = (book: BookWithStats): string => {
+  return book.cover_url || book.coverUrl || '';
 };
 
 const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
-  const booksData = books && books.length > 0 ? books : HERO_BOOKS;
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
+  const openPlayer = useCallback((book: BookWithStats) => {
+    openBookInPlayer(router as any, book as any);
+  }, [router]);
+
   // 自动轮播
   useEffect(() => {
+    if (books.length === 0) return;
     const timer = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % booksData.length;
+      const nextIndex = (currentIndex + 1) % books.length;
       setCurrentIndex(nextIndex);
       scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
     }, CAROUSEL_CONFIG.autoScrollInterval);
 
     return () => clearInterval(timer);
-  }, [currentIndex, booksData]);
+  }, [currentIndex, books.length]);
 
   const handleMomentumScrollEnd = useCallback(
     (event: { nativeEvent: { contentOffset: { x: number } } }) => {
@@ -52,9 +63,13 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
 
   // 使用正确的类型
   const renderCarouselItem = useCallback(
-    (book: BookWithStats, index: number) => (
-      <View key={book.id} style={[styles.carouselItem, { width }]}>
-        <View style={styles.ticketCard}>
+    (book: BookWithStats) => (
+      <View key={book.id} style={[styles.carouselItem, { width }]}> 
+        <TouchableOpacity
+          style={styles.ticketCard}
+          activeOpacity={0.9}
+          onPress={() => openPlayer(book)}
+        >
           <View style={styles.backgroundGradient} />
           <View style={[styles.notch, styles.leftNotch]} />
           <View style={[styles.notch, styles.rightNotch]} />
@@ -73,8 +88,9 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
               </View>
 
               <View style={styles.smallCoverContainer}>
-                <Image
-                  source={{ uri: getBookCoverUrl(book) }}
+                <FallbackImage
+                  uri={getBookCoverUrl(book)}
+                  sourceId={book.source_id || book.sourceId}
                   style={styles.smallCover}
                 />
               </View>
@@ -105,7 +121,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.playButton}>
+              <TouchableOpacity style={styles.playButton} onPress={() => openPlayer(book)}>
                 <MaterialIcons
                   name="play-arrow"
                   size={SIZES.icon.medium}
@@ -114,10 +130,10 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
     ),
-    [],
+    [openPlayer],
   );
 
   return (
@@ -130,11 +146,11 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
         onMomentumScrollEnd={handleMomentumScrollEnd}
         style={styles.carouselContainer}
       >
-        {booksData.map((book, index) => renderCarouselItem(book, index))}
+        {books.map((book) => renderCarouselItem(book))}
       </ScrollView>
 
       <View style={styles.paginationContainer}>
-        {booksData.map((_, idx) => (
+        {books.map((_, idx) => (
           <View
             key={idx}
             style={[

@@ -27,6 +27,8 @@ export interface Book {
   description?: string;
   cover_url?: string; // 后端格式
   coverUrl?: string; // 前端格式
+  cover_proxy_url?: string; // 后端下发的代理 URL
+  coverProxyUrl?: string; // 前端格式的代理 URL
   audio_url?: string;
   audioUrl?: string;
   audio_proxy_url?: string;
@@ -36,6 +38,9 @@ export interface Book {
   playCount?: string; // 前端格式：显示用
   source_id?: string; // 后端格式
   sourceId?: string; // 前端格式
+  status?: string;
+  chapter_count?: number; // 后端格式
+  chapterCount?: number; // 前端格式
   category_id?: number;
   category?: string; // 前端格式：分类名称
   episodes?: Episode[];
@@ -122,6 +127,26 @@ export interface SearchResult {
   total?: number;
   total_page?: number;
   current_page?: number;
+}
+
+// 音源信息类型
+export interface SourceInfo {
+  id: string;
+  name: string;
+  description: string;
+  base_url: string;
+  version: string;
+  searchable: boolean;
+  has_categories: boolean;
+  enabled: boolean;
+  health_status: string;
+  success_rate: number;
+}
+
+// 全局搜索结果类型
+export interface GlobalSearchResult {
+  total: number;
+  results: Book[];
 }
 
 // 导航类型

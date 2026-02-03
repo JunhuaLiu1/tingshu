@@ -1,32 +1,48 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   FlatList,
-  Image,
   StyleSheet,
 } from 'react-native';
-import {MaterialIcons} from '@expo/vector-icons';
-import {EDITORS_PICKS, getBookCoverUrl} from '../data/mockData';
+import { useRouter } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Book } from '../types';
+import FallbackImage from './common/FallbackImage';
+import { openBookInPlayer } from '../utils/openPlayer';
 
-type EditorsPickProps = {
-  books?: Book[];
+interface EditorsPickProps {
+  books: Book[];
   title?: string;
+}
+
+// 获取封面 URL（兼容多种格式）
+const getBookCoverUrl = (book: Book): string => {
+  return book.cover_url || book.coverUrl || '';
 };
 
 const EditorsPick: React.FC<EditorsPickProps> = ({ books, title = '名著推荐' }) => {
-  const booksData = books && books.length > 0 ? books : EDITORS_PICKS;
-  const renderBookItem = ({item}: any) => (
-    <TouchableOpacity style={styles.bookCard} activeOpacity={0.8}>
+  const router = useRouter();
+
+  const openPlayer = useCallback((book: Book) => {
+    openBookInPlayer(router as any, book as any);
+  }, [router]);
+
+  const renderBookItem = ({ item }: any) => (
+    <TouchableOpacity
+      style={styles.bookCard}
+      activeOpacity={0.8}
+      onPress={() => openPlayer(item)}
+    >
       <View style={styles.bookCoverContainer}>
-        <Image
-          source={{uri: getBookCoverUrl(item)}}
+        <FallbackImage
+          uri={getBookCoverUrl(item)}
+          sourceId={item.source_id || item.sourceId}
           style={styles.bookCover}
         />
         <View style={styles.playButtonOverlay}>
-          <TouchableOpacity style={styles.playButton}>
+          <TouchableOpacity style={styles.playButton} onPress={() => openPlayer(item)}>
             <MaterialIcons name="play-arrow" size={16} color="#333" />
           </TouchableOpacity>
         </View>
@@ -51,12 +67,12 @@ const EditorsPick: React.FC<EditorsPickProps> = ({ books, title = '名著推荐'
 
       <FlatList
         horizontal
-        data={booksData}
+        data={books}
         renderItem={renderBookItem}
         keyExtractor={item => item.id.toString()}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContainer}
-        ItemSeparatorComponent={() => <View style={{width: 20}} />}
+        ItemSeparatorComponent={() => <View style={{ width: 20 }} />}
       />
     </View>
   );
@@ -87,7 +103,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -101,12 +117,12 @@ const styles = StyleSheet.create({
   },
   bookCoverContainer: {
     position: 'relative',
-    aspectRatio: 3/4,
+    aspectRatio: 3 / 4,
     borderRadius: 24,
     overflow: 'hidden',
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 8},
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 8,
@@ -130,7 +146,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,

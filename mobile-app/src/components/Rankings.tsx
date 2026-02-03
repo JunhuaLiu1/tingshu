@@ -1,27 +1,41 @@
 import React, { useCallback } from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { RANKING_BOOKS, getBookCoverUrl } from "../data/mockData";
 import { Book } from "../types";
+import FallbackImage from "./common/FallbackImage";
 import { COLORS, SPACING, SIZES, SHADOWS } from "../constants/design-tokens";
+import { openBookInPlayer } from "../utils/openPlayer";
 
-type RankingsProps = {
-  books?: Book[];
+interface RankingsProps {
+  books: Book[];
   title?: string;
+}
+
+// 获取封面 URL（兼容多种格式）
+const getBookCoverUrl = (book: Book): string => {
+  return book.cover_url || book.coverUrl || '';
 };
 
 const Rankings: React.FC<RankingsProps> = ({ books, title = "经典排行" }) => {
-  const booksData = books && books.length > 0 ? books : RANKING_BOOKS;
+  const router = useRouter();
+
+  const openPlayer = useCallback((book: Book) => {
+    openBookInPlayer(router as any, book as any);
+  }, [router]);
+
   // 使用正确的类型
   const renderRankingItem = useCallback(
     ({ item }: { item: Book }) => (
       <TouchableOpacity
         style={styles.rankingItem}
         activeOpacity={COLORS.opacity?.active || 0.8}
+        onPress={() => openPlayer(item)}
       >
         <View style={styles.bookCoverContainer}>
-          <Image
-            source={{ uri: getBookCoverUrl(item) }}
+          <FallbackImage
+            uri={getBookCoverUrl(item)}
+            sourceId={item.source_id || item.sourceId}
             style={styles.bookCover}
           />
         </View>
@@ -47,7 +61,7 @@ const Rankings: React.FC<RankingsProps> = ({ books, title = "经典排行" }) =>
         </View>
       </TouchableOpacity>
     ),
-    [],
+    [openPlayer],
   );
 
   return (
@@ -60,7 +74,7 @@ const Rankings: React.FC<RankingsProps> = ({ books, title = "经典排行" }) =>
       </View>
 
       <View style={styles.listContainer}>
-        {booksData.slice(0, 4).map((item, index) => (
+        {books.slice(0, 4).map((item, index) => (
           <View key={item.id.toString()}>
             {renderRankingItem({ item })}
             {index < 3 && <View style={{ height: SPACING.sm }} />}

@@ -111,21 +111,23 @@ func (m *Manager) Disable(id string) {
 
 func (m *Manager) GlobalSearch(keyword string) []Book {
 	m.mu.RLock()
-	defer m.mu.RUnlock()
+	sources := make([]Source, 0, len(m.sources))
+	for _, src := range m.sources {
+		if _, disabled := m.disabled[src.ID()]; disabled {
+			continue
+		}
+		if !src.IsSearchable() {
+			continue
+		}
+		sources = append(sources, src)
+	}
+	m.mu.RUnlock()
 
 	var results []Book
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	for _, src := range m.sources {
-		if _, disabled := m.disabled[src.ID()]; disabled {
-			continue
-		}
-
-		if !src.IsSearchable() {
-			continue
-		}
-
+	for _, src := range sources {
 		wg.Add(1)
 		go func(s Source) {
 			defer wg.Done()

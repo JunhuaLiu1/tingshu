@@ -10,11 +10,11 @@ import (
 func GetRankings(c *gin.Context) {
 	period := c.DefaultQuery("period", "daily")
 
-	rows, err := config.SupabaseDB.Query(`
+	rows, err := config.DB.Query(`
 		SELECT r.rank, r.score, b.id, b.title, b.author, b.cover_url, b.play_count
 		FROM rankings r
 		JOIN books b ON r.book_id = b.id
-		WHERE r.period = $1
+		WHERE r.period = ?
 		ORDER BY r.rank ASC
 		LIMIT 50
 	`, period)

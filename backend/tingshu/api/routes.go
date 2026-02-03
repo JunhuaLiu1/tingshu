@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/username/tingshu-backend/tingshu/api/v1"
+	v1 "github.com/username/tingshu-backend/tingshu/api/v1"
 	"github.com/username/tingshu-backend/tingshu/middleware"
 )
 
@@ -25,6 +25,15 @@ func SetupRoutes() *gin.Engine {
 	// API v1 路由组
 	v1Group := router.Group("/api/v1")
 	{
+		// 健康检查（v1）
+		// 前端默认 baseURL = .../api/v1，因此需要提供 /api/v1/health
+		v1Group.GET("/health", func(c *gin.Context) {
+			Success(c, gin.H{
+				"status":  "ok",
+				"message": "Tingshu API is running",
+			})
+		})
+
 		// 书籍相关
 		v1Group.GET("/books", v1.GetBooks)
 		v1Group.GET("/books/:id", v1.GetBookByID)
@@ -46,7 +55,7 @@ func SetupRoutes() *gin.Engine {
 		v1Group.GET("/sources/:id/search", v1.SearchSource)
 		v1Group.GET("/sources/:id/books/:bookId", v1.GetSourceBookDetail)
 		v1Group.GET("/sources/:id/chapters/:bookId", v1.GetSourceChapters)
-		v1Group.GET("/sources/:id/audio/:episodeId", v1.GetSourceAudio)
+		v1Group.GET("/sources/:id/audio/*episodeId", v1.GetSourceAudio)
 		v1Group.POST("/sources/:id/disable", v1.DisableSource)
 		v1Group.POST("/sources/:id/enable", v1.EnableSource)
 
@@ -55,9 +64,26 @@ func SetupRoutes() *gin.Engine {
 		v1Group.GET("/playback/progress", v1.GetPlaybackProgress)
 		v1Group.GET("/users/:userId/history", v1.GetUserHistory)
 
+		// 播放历史（需要认证）
+		v1Group.POST("/history", middleware.Auth(), v1.SaveHistory)
+		v1Group.GET("/history", middleware.Auth(), v1.GetHistory)
+		v1Group.DELETE("/history/:id", middleware.Auth(), v1.DeleteHistory)
+		v1Group.DELETE("/history", middleware.Auth(), v1.ClearHistory)
+
 		// 音频代理
-		v1Group.GET("/proxy/audio", v1.ProxyAudio)
 		v1Group.GET("/proxy/ximalaya", v1.ProxyXimalayaAudio)
+		v1Group.GET("/proxy/audio", v1.ProxyAudio)
+
+		// 认证
+		v1Group.POST("/auth/register", v1.Register)
+		v1Group.POST("/auth/login", v1.Login)
+		v1Group.POST("/auth/password/change", middleware.Auth(), v1.ChangePassword)
+		v1Group.POST("/auth/password/reset/request", v1.RequestPasswordReset)
+		v1Group.POST("/auth/password/reset/confirm", v1.ConfirmPasswordReset)
+
+		// 用户资料（需要认证）
+		v1Group.GET("/profile", middleware.Auth(), v1.GetProfile)
+		v1Group.PUT("/profile", middleware.Auth(), v1.UpdateProfile)
 	}
 
 	return router

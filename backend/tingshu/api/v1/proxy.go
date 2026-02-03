@@ -63,6 +63,11 @@ var proxyWhitelist = map[string][]string{
 	"ximalaya": {"xmcdn.com", "ximalaya.com"},
 	"kuwo":     {"kuwo.cn"},
 	"huanting": {"huanting.cc"},
+	"shuyinfm": {"shuyinfm.com"},
+	"ting78":   {"ting78.com"},
+	"tingsm":   {"tingsm.com"},
+	"leting8":  {"leting8.com"},
+	"missevan": {"missevan.com"},
 }
 
 func isAllowedSource(sourceID string) bool {
@@ -146,11 +151,21 @@ func userAgentForSource(sourceID string) string {
 func refererForSource(sourceID string) string {
 	switch sourceID {
 	case "kuwo":
-		return "https://tingshu.kuwo.cn/"
+		return "https://tsm.kuwo.cn/"
 	case "huanting":
 		return "https://www.huanting.cc/"
 	case "ximalaya":
 		return "https://www.ximalaya.com/"
+	case "shuyinfm":
+		return "https://www.shuyinfm.com/"
+	case "ting78":
+		return "https://www.ting78.com/"
+	case "tingsm":
+		return "https://www.tingsm.com/"
+	case "leting8":
+		return "https://www.leting8.com/"
+	case "missevan":
+		return "https://www.missevan.com/"
 	default:
 		return ""
 	}

@@ -52,7 +52,7 @@ export const HERO_BOOKS: BookWithStats[] = [
     id: 1,
     title: "百年孤独",
     author: "加西亚·马尔克斯",
-    cover_url: "https://picsum.photos/600/600?random=1",
+    cover_url: "",
     description: "魔幻现实主义的巅峰之作，讲述布恩迪亚家族七代人的传奇故事。",
     created_at: "2024-01-01",
     updated_at: "2024-01-01",
@@ -65,7 +65,7 @@ export const HERO_BOOKS: BookWithStats[] = [
     id: 2,
     title: "悲惨世界",
     author: "维克多·雨果",
-    cover_url: "https://picsum.photos/600/600?random=2",
+    cover_url: "",
     description: "人性、救赎与时代洪流交织的宏大史诗。",
     created_at: "2024-01-01",
     updated_at: "2024-01-01",
@@ -78,7 +78,7 @@ export const HERO_BOOKS: BookWithStats[] = [
     id: 3,
     title: "战争与和平",
     author: "列夫·托尔斯泰",
-    cover_url: "https://picsum.photos/600/600?random=3",
+    cover_url: "",
     description: "在战争与爱情之间，书写时代与人的命运。",
     created_at: "2024-01-01",
     updated_at: "2024-01-01",
@@ -95,7 +95,7 @@ export const EDITORS_PICKS: Book[] = [
     id: 4,
     title: "小王子",
     author: "圣埃克苏佩里",
-    cover_url: "https://picsum.photos/300/400?random=4",
+    cover_url: "",
     play_count: 2300000,
     playCount: "230万播放",
     description: "写给大人的童话，关于爱与责任。",
@@ -106,7 +106,7 @@ export const EDITORS_PICKS: Book[] = [
     id: 5,
     title: "傲慢与偏见",
     author: "简·奥斯汀",
-    cover_url: "https://picsum.photos/300/400?random=5",
+    cover_url: "",
     play_count: 1850000,
     playCount: "185万播放",
     description: "在偏见与自尊之间，寻找爱情与成长。",
@@ -117,7 +117,7 @@ export const EDITORS_PICKS: Book[] = [
     id: 6,
     title: "老人与海",
     author: "欧内斯特·海明威",
-    cover_url: "https://picsum.photos/300/400?random=6",
+    cover_url: "",
     play_count: 980000,
     playCount: "98万播放",
     description: "人与命运对抗的意志之歌。",
@@ -128,7 +128,7 @@ export const EDITORS_PICKS: Book[] = [
     id: 7,
     title: "基督山伯爵",
     author: "大仲马",
-    cover_url: "https://picsum.photos/300/400?random=7",
+    cover_url: "",
     play_count: 4100000,
     playCount: "410万播放",
     description: "复仇、正义与救赎的经典传奇。",
@@ -144,7 +144,7 @@ export const RANKING_BOOKS: Book[] = [
     title: "红楼梦",
     author: "曹雪芹",
     rank: 1,
-    cover_url: "https://picsum.photos/200/200?random=8",
+    cover_url: "",
     category: "中国古典名著",
     play_count: 9990000,
     playCount: "999万+",
@@ -157,7 +157,7 @@ export const RANKING_BOOKS: Book[] = [
     title: "1984",
     author: "乔治·奥威尔",
     rank: 2,
-    cover_url: "https://picsum.photos/200/200?random=9",
+    cover_url: "",
     category: "世界名著",
     play_count: 8500000,
     playCount: "850万",
@@ -170,7 +170,7 @@ export const RANKING_BOOKS: Book[] = [
     title: "飘",
     author: "玛格丽特·米切尔",
     rank: 3,
-    cover_url: "https://picsum.photos/200/200?random=10",
+    cover_url: "",
     category: "外国小说",
     play_count: 7200000,
     playCount: "720万",
@@ -183,7 +183,7 @@ export const RANKING_BOOKS: Book[] = [
     title: "福尔摩斯探案集",
     author: "柯南·道尔",
     rank: 4,
-    cover_url: "https://picsum.photos/200/200?random=11",
+    cover_url: "",
     category: "悬疑推理",
     play_count: 5400000,
     playCount: "540万",
@@ -196,7 +196,7 @@ export const RANKING_BOOKS: Book[] = [
     title: "简爱",
     author: "夏洛蒂·勃朗特",
     rank: 5,
-    cover_url: "https://picsum.photos/200/200?random=12",
+    cover_url: "",
     category: "世界名著",
     play_count: 4900000,
     playCount: "490万",
@@ -215,11 +215,7 @@ export const ALL_BOOKS: Book[] = [
 
 // 获取书籍的封面 URL（兼容两种格式）
 export const getBookCoverUrl = (book: Book): string => {
-  return (
-    book.cover_url ||
-    book.coverUrl ||
-    "https://picsum.photos/300/400?random=default"
-  );
+  return book.cover_url || book.coverUrl || "";
 };
 
 // 获取书籍的播放次数（格式化显示）

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "EtherAudio",
-    "slug": "etheraudio",
+    "slug": "tingshu",
     "version": "1",
     "orientation": "portrait",
     "icon.0.0": "./assets/images/icon.png",
@@ -19,6 +19,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "usesCleartextTraffic": true,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.yourcompany.etheraudio"
@@ -44,6 +45,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "488db8f5-8c41-47ef-ba74-1a22000e99d4"
+      }
+    },
+    "owner": "junhualius-organization"
   }
 }

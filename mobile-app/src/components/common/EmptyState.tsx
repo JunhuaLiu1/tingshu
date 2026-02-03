@@ -10,6 +10,7 @@ interface EmptyStateProps {
   subtitle?: string;
   actionText?: string;
   onAction?: () => void;
+  onActionPress?: () => void;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
@@ -18,16 +19,19 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   subtitle,
   actionText,
   onAction,
+  onActionPress,
 }) => {
+  const actionHandler = onActionPress ?? onAction;
+
   return (
     <View style={styles.container}>
       <MaterialIcons name={icon} size={64} color={tokens.colors.border.default} />
       <Text style={styles.title}>{title}</Text>
       {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-      {actionText && onAction && (
+      {actionText && actionHandler && (
         <TouchableOpacity
           style={styles.button}
-          onPress={onAction}
+          onPress={actionHandler}
           activeOpacity={tokens.opacity.active}
         >
           <Text style={styles.buttonText}>{actionText}</Text>
