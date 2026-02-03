@@ -118,6 +118,10 @@ const ProfileScreen: React.FC = () => {
       router.push('/profile/account');
       return;
     }
+    if (screen === 'About') {
+      router.push('/profile/about');
+      return;
+    }
     showToast({ type: 'info', message: '功能开发中' });
   }, [showToast]);
 
@@ -291,7 +295,7 @@ const ProfileScreen: React.FC = () => {
               {renderMenuItem('file-download', '下载管理', `${stats?.downloads || 0}个文件`, () => handleMenuPress('Downloads'))}
               {renderMenuItem('cleaning-services', '清除缓存', stats?.cacheSize || '缓存大小', handleClearCache)}
               {renderMenuItem('feedback', '意见反馈', undefined, () => handleMenuPress('Feedback'))}
-              {renderMenuItem('info', '关于我们', `v${getAppVersion()}`, () => handleMenuPress('Help'), true)}
+              {renderMenuItem('info', '关于我们', `v${getAppVersion()}`, () => handleMenuPress('About'), true)}
             </>
           ))}
 
