@@ -17,8 +17,13 @@ import {
   SHADOWS,
 } from "../constants/design-tokens";
 
-const CategoryTabs: React.FC = () => {
-  const [activeId, setActiveId] = useState<number>(CATEGORIES[0].id);
+type CategoryTabsProps = {
+  categories?: Category[];
+};
+
+const CategoryTabs: React.FC<CategoryTabsProps> = ({ categories }) => {
+  const categoriesData = categories && categories.length > 0 ? categories : CATEGORIES;
+  const [activeId, setActiveId] = useState<number>(categoriesData[0].id);
 
   // 使用正确的类型
   const renderCategoryItem = useCallback(
@@ -62,7 +67,7 @@ const CategoryTabs: React.FC = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
       >
-        {CATEGORIES.slice(0, 3).map(renderCategoryItem)}
+        {categoriesData.slice(0, 3).map(renderCategoryItem)}
       </ScrollView>
     </View>
   );

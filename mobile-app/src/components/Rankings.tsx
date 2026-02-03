@@ -5,7 +5,13 @@ import { RANKING_BOOKS, getBookCoverUrl } from "../data/mockData";
 import { Book } from "../types";
 import { COLORS, SPACING, SIZES, SHADOWS } from "../constants/design-tokens";
 
-const Rankings: React.FC = () => {
+type RankingsProps = {
+  books?: Book[];
+  title?: string;
+};
+
+const Rankings: React.FC<RankingsProps> = ({ books, title = "经典排行" }) => {
+  const booksData = books && books.length > 0 ? books : RANKING_BOOKS;
   // 使用正确的类型
   const renderRankingItem = useCallback(
     ({ item }: { item: Book }) => (
@@ -47,14 +53,14 @@ const Rankings: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>热门排行</Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
         <TouchableOpacity style={styles.seeAllBadge}>
           <Text style={styles.seeAllText}>查看全部</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.listContainer}>
-        {RANKING_BOOKS.slice(0, 4).map((item, index) => (
+        {booksData.slice(0, 4).map((item, index) => (
           <View key={item.id.toString()}>
             {renderRankingItem({ item })}
             {index < 3 && <View style={{ height: SPACING.sm }} />}

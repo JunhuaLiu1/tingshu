@@ -7,7 +7,6 @@ import {
   Image,
   StyleSheet,
   Dimensions,
-  Animated,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { HERO_BOOKS, getBookCoverUrl } from "../data/mockData";
@@ -23,20 +22,25 @@ import {
 
 const { width } = Dimensions.get("window");
 
-const HeroCarousel: React.FC = () => {
+type HeroCarouselProps = {
+  books?: BookWithStats[];
+};
+
+const HeroCarousel: React.FC<HeroCarouselProps> = ({ books }) => {
+  const booksData = books && books.length > 0 ? books : HERO_BOOKS;
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
   // 自动轮播
   useEffect(() => {
     const timer = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % HERO_BOOKS.length;
+      const nextIndex = (currentIndex + 1) % booksData.length;
       setCurrentIndex(nextIndex);
       scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
     }, CAROUSEL_CONFIG.autoScrollInterval);
 
     return () => clearInterval(timer);
-  }, [currentIndex]);
+  }, [currentIndex, booksData]);
 
   const handleMomentumScrollEnd = useCallback(
     (event: { nativeEvent: { contentOffset: { x: number } } }) => {
@@ -126,11 +130,11 @@ const HeroCarousel: React.FC = () => {
         onMomentumScrollEnd={handleMomentumScrollEnd}
         style={styles.carouselContainer}
       >
-        {HERO_BOOKS.map((book, index) => renderCarouselItem(book, index))}
+        {booksData.map((book, index) => renderCarouselItem(book, index))}
       </ScrollView>
 
       <View style={styles.paginationContainer}>
-        {HERO_BOOKS.map((_, idx) => (
+        {booksData.map((_, idx) => (
           <View
             key={idx}
             style={[

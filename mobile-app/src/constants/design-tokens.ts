@@ -178,12 +178,12 @@ export const CAROUSEL_CONFIG = {
 
 // 分类图标映射
 export const CATEGORY_ICONS: Record<number, string> = {
-  1: "menu-book", // 经典文学
-  2: "explore", // 悬疑推理
-  3: "work", // 职场成长
-  4: "favorite", // 情感治愈
-  5: "history", // 历史传奇
-  6: "rocket", // 科幻未来
+  1: "menu-book", // 世界名著
+  2: "public", // 外国小说
+  3: "auto-stories", // 中国古典名著
+  4: "explore", // 悬疑推理
+  5: "history", // 历史传记
+  6: "rocket", // 科幻经典
 } as const;
 
 // 导出类型
