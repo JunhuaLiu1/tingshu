@@ -77,6 +77,7 @@ func SetupRoutes() *gin.Engine {
 		// 认证
 		v1Group.POST("/auth/register", v1.Register)
 		v1Group.POST("/auth/login", v1.Login)
+		v1Group.POST("/auth/password/change", middleware.Auth(), v1.ChangePassword)
 		v1Group.POST("/auth/password/reset/request", v1.RequestPasswordReset)
 		v1Group.POST("/auth/password/reset/confirm", v1.ConfirmPasswordReset)
 

@@ -238,7 +238,7 @@ go.work
 go.work.sum
 
 # Go module files
-go.sum
+
 
 # IDE specific files (already covered above but repeated for clarity)
 .idea/
