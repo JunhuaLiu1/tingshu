@@ -1,6 +1,5 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {
-  View,
   Text,
   ScrollView,
   StyleSheet,
@@ -9,7 +8,6 @@ import {
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import {MaterialIcons} from '@expo/vector-icons';
-import {Book, Category} from '../types';
 import {CATEGORIES, HERO_BOOKS, EDITORS_PICKS, RANKING_BOOKS} from '../data/mockData';
 import HeroCarousel from '../components/HeroCarousel';
 import CategoryTabs from '../components/CategoryTabs';
@@ -17,13 +15,21 @@ import EditorsPick from '../components/EditorsPick';
 import Rankings from '../components/Rankings';
 import { tokens } from '../theme/tokens';
 import { layoutStyles } from '../theme/styles';
+import { prioritizeForeignAndClassics } from '../utils/homeRecommend';
 
 const HomeScreen: React.FC = () => {
-  const [, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     console.log('Home screen loaded with mock data');
+  }, []);
+
+  const { heroBooks, editorsPicks, rankingBooks } = useMemo(() => {
+    return {
+      heroBooks: prioritizeForeignAndClassics(HERO_BOOKS),
+      editorsPicks: prioritizeForeignAndClassics(EDITORS_PICKS),
+      rankingBooks: prioritizeForeignAndClassics(RANKING_BOOKS),
+    };
   }, []);
 
   return (
@@ -40,16 +46,16 @@ const HomeScreen: React.FC = () => {
         </TouchableOpacity>
 
         {/* 轮播图 */}
-        <HeroCarousel />
+        <HeroCarousel books={heroBooks} />
 
         {/* 分类标签 */}
-        <CategoryTabs />
+        <CategoryTabs categories={CATEGORIES} />
 
         {/* 编辑推荐 */}
-        <EditorsPick />
+        <EditorsPick books={editorsPicks} title="世界名著推荐" />
 
         {/* 排行榜 */}
-        <Rankings />
+        <Rankings books={rankingBooks} title="经典小说排行" />
       </ScrollView>
     </SafeAreaView>
   );

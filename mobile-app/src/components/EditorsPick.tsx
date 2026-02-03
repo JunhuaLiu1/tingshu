@@ -6,14 +6,18 @@ import {
   FlatList,
   Image,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
 import {MaterialIcons} from '@expo/vector-icons';
-import {EDITORS_PICKS, getBookCoverUrl, getBookPlayCount} from '../data/mockData';
+import {EDITORS_PICKS, getBookCoverUrl} from '../data/mockData';
+import { Book } from '../types';
 
-const {width} = Dimensions.get('window');
+type EditorsPickProps = {
+  books?: Book[];
+  title?: string;
+};
 
-const EditorsPick: React.FC = () => {
+const EditorsPick: React.FC<EditorsPickProps> = ({ books, title = '名著推荐' }) => {
+  const booksData = books && books.length > 0 ? books : EDITORS_PICKS;
   const renderBookItem = ({item}: any) => (
     <TouchableOpacity style={styles.bookCard} activeOpacity={0.8}>
       <View style={styles.bookCoverContainer}>
@@ -39,7 +43,7 @@ const EditorsPick: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>热门书籍</Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
         <TouchableOpacity style={styles.seeAllButton}>
           <MaterialIcons name="arrow-forward" size={20} color="#FF6B35" />
         </TouchableOpacity>
@@ -47,7 +51,7 @@ const EditorsPick: React.FC = () => {
 
       <FlatList
         horizontal
-        data={EDITORS_PICKS}
+        data={booksData}
         renderItem={renderBookItem}
         keyExtractor={item => item.id.toString()}
         showsHorizontalScrollIndicator={false}
