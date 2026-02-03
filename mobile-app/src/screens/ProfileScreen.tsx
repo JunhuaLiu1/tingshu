@@ -110,6 +110,14 @@ const ProfileScreen: React.FC = () => {
 
   // 菜单项点击处理
   const handleMenuPress = useCallback((screen: string) => {
+    if (screen === 'ProfileEdit') {
+      router.push('/profile/edit');
+      return;
+    }
+    if (screen === 'AccountManage') {
+      router.push('/profile/account');
+      return;
+    }
     showToast({ type: 'info', message: '功能开发中' });
   }, [showToast]);
 
@@ -266,7 +274,7 @@ const ProfileScreen: React.FC = () => {
           {renderSection('个人设置', (
             <>
               {renderMenuItem('person', '编辑资料', profile?.username, () => handleMenuPress('ProfileEdit'))}
-              {renderMenuItem('lock', '账号管理', '修改密码', () => handleMenuPress('ProfileEdit'), true)}
+              {renderMenuItem('lock', '账号管理', '修改密码', () => handleMenuPress('AccountManage'), true)}
             </>
           ))}
 
