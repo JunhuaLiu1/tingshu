@@ -28,7 +28,6 @@ const HomeScreen: React.FC = () => {
     isLoading,
     error,
     refresh,
-    dataMode,
   } = useHomeData();
 
   const [refreshing, setRefreshing] = React.useState(false);
@@ -80,13 +79,6 @@ const HomeScreen: React.FC = () => {
           <View style={styles.errorBanner}>
             <MaterialIcons name="info-outline" size={16} color={tokens.colors.text.secondary} />
             <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {/* 数据来源指示（仅开发模式） */}
-        {__DEV__ && (
-          <View style={styles.devBanner}>
-            <Text style={styles.devText}>数据模式: {dataMode}</Text>
           </View>
         )}
 
@@ -152,14 +144,6 @@ const styles = StyleSheet.create({
     marginLeft: tokens.spacing.xs,
     color: tokens.colors.text.secondary,
     fontSize: tokens.typography.small,
-  },
-  devBanner: {
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  devText: {
-    fontSize: 10,
-    color: tokens.colors.text.tertiary,
   },
 });
 
